@@ -46,6 +46,22 @@
   .mapCard { position: relative; border: 2px solid #4a3a30; border-radius: 8px; overflow: hidden; cursor: pointer; background: #1a1411; }
   .mapCard.sel { border-color: #ffd27a; box-shadow: 0 0 0 2px rgba(255, 210, 122, .35); }
   .mapCard.locked { cursor: default; }
+  #beatenBadge { color: #ffd27a; font-weight: 700; margin: -4px 0 10px; }
+  .serverRow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; text-align: left; border: 1px solid #4a3a30; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: #1a1411; }
+  .serverRow .nm { font-weight: 700; font-size: 16px; }
+  .serverRow .ds { font-size: 13px; color: #c9b8a6; }
+  .serverRow .st { font-size: 13px; color: #9fd4ff; margin-top: 3px; }
+  .keyRow { display: grid; grid-template-columns: 1fr 190px; gap: 10px; align-items: center; text-align: left; padding: 3px 0; max-width: 460px; margin: 0 auto; }
+  .panel button.keyBtn { min-width: 170px; font-family: inherit; }
+  .panel button.keyBtn.wait { background: #b8741f; border-color: #ffd27a; }
+  .panel button.danger { background: #3a1a1a; border-color: #7a3030; font-size: 13px; font-weight: 400; color: #e0b0a8; }
+  .panel button.danger:hover { background: #5a2020; }
+  .panel button.lockBtn { width: 58px; height: 58px; border-radius: 50%; font-size: 26px; padding: 0; background: #1a1411; border: 2px solid #4a3a30; }
+  .panel button.lockBtn.open { background: #3a0a0a; border-color: #ff4a2a; box-shadow: 0 0 18px rgba(255, 60, 20, .7); }
+  .panel button.lockBtn.sel { outline: 3px solid #ffd27a; }
+  .shake { animation: shake .4s; }
+  @keyframes shake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+  .mapCard.lockedMap { cursor: not-allowed; filter: grayscale(0.85) brightness(0.6); }
   .mapCard .pv { height: 62px; }
   .mapCard .nm { padding: 6px 9px 2px; font-weight: 700; }
   .mapCard .ds { padding: 0 9px 8px; font-size: 12px; color: #c9b8a6; }
@@ -56,6 +72,15 @@
   #mpMaps .nm { padding: 5px 8px 6px; font-size: 14px; }
   .diffs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
   .diffs button.sel { background: #b8741f; border-color: #ffd27a; }
+  .diffs button:disabled.sel { opacity: 1; background: #8a1a1a; border-color: #ff5a4a; }
+  .panel button.hc.on { background: #8a1a1a; border-color: #ff5a4a; color: #fff; }
+  .panel button.hc.on:hover { background: #a02020; }
+  #spSettingsWrap { text-align: left; max-width: 520px; margin: 0 auto 10px; border: 1px solid #3a2d25; border-radius: 8px; padding: 8px 12px; }
+  #hcInfo { color: #ff8a7a; font-weight: 700; }
+  #hcInfo:empty { display: none; }
+  #deathButtons { display: none; }
+  #deathBest { color: #ffd27a; font-size: 18px; font-weight: 900; }
+  .newBest { color: #7dff9a !important; }
   .desc { font-size: 13px; color: #c9b8a6; min-height: 18px; margin: 8px 0 12px; }
 
   .lobbyGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; text-align: left; }
@@ -68,6 +93,8 @@
   #lobbyResult:empty { display: none; }
   .setRow { display: grid; grid-template-columns: 1fr 150px 56px; align-items: center; gap: 8px; padding: 3px 0; font-size: 14px; }
   .setRow.off { opacity: .4; }
+  .setHeader { margin: 10px 0 2px; padding-bottom: 3px; border-bottom: 1px solid #4a3a30; color: #e8a33a; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .setHeader:first-child { margin-top: 0; }
   .setRow select { background: #140f0c; color: #fff; border: 1px solid #6b5445; border-radius: 5px; padding: 3px; font: inherit; font-size: 13px; }
   .setRow input[type=range] { width: 100%; accent-color: #e8a33a; }
   .setRow input[type=checkbox] { accent-color: #e8a33a; width: 18px; height: 18px; }
@@ -145,29 +172,23 @@
     <h1>Arena 3D</h1>
 
     <section id="scrMain" class="scr active">
+      <div id="beatenBadge" style="display:none">🏆 You have beaten the game</div>
       <div class="row"><input type="text" id="nameInput" maxlength="14" placeholder="Your name" autocomplete="off"></div>
       <div class="row col">
         <button id="btnSingle" class="primary big">Singleplayer</button>
+        <button id="btnServers" class="primary big">🌐 Public servers</button>
         <button id="btnHost" class="big">Host multiplayer</button>
+        <button id="btnKeys" class="big">⌨ Controls</button>
       </div>
       <div class="row">
         <input type="text" id="codeInput" maxlength="5" placeholder="ROOM CODE" autocomplete="off">
         <button id="btnJoin" class="primary">Join game</button>
       </div>
       <div class="status" id="mainStatus"></div>
+      <div class="row"><button id="btnResetScores" class="danger">Reset all high scores</button></div>
       <details>
-        <summary>Controls</summary>
-        <table class="keys">
-          <tr><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></td><td>Move</td></tr>
-          <tr><td><kbd>Mouse</kbd></td><td>Look / aim</td></tr>
-          <tr><td><kbd>Left click</kbd></td><td>Shoot (hold for auto fire)</td></tr>
-          <tr><td><kbd>Shift</kbd></td><td>Sprint (uses stamina)</td></tr>
-          <tr><td><kbd>Space</kbd></td><td>Jump</td></tr>
-          <tr><td><kbd>1</kbd>&ndash;<kbd>5</kbd> / <kbd>Wheel</kbd> / <kbd>Q</kbd></td><td>Choose weapon / cycle / last weapon</td></tr>
-          <tr><td><kbd>V</kbd></td><td>Switch first / third person</td></tr>
-          <tr><td><kbd>Tab</kbd></td><td>Scoreboard (hold)</td></tr>
-          <tr><td><kbd>Esc</kbd></td><td>Pause menu</td></tr>
-        </table>
+        <summary>Quick help</summary>
+        <table class="keys" id="controlsHelp"></table>
         <div class="tip">Walk over weapons, ammo, health and armor to pick them up. Glowing pads launch you, purple rings teleport you, lava hurts. Rocket jump: look down, jump and fire a rocket.</div>
       </details>
     </section>
@@ -175,9 +196,19 @@
     <section id="scrSingle" class="scr">
       <h2>Map</h2>
       <div class="maps" id="spMaps"></div>
+      <div class="row" style="margin-top:10px"><button id="btnSecret" class="lockBtn" title="???">🔒</button></div>
       <h2>Difficulty</h2>
       <div class="diffs" id="spDiffs"></div>
       <div class="desc" id="spDiffDesc"></div>
+      <div class="row">
+        <button id="btnSpSettings">⚙ Settings</button>
+        <button id="btnHardcore" class="hc">☠ Hardcore: Off</button>
+      </div>
+      <div class="desc" id="hcInfo"></div>
+      <div id="spSettingsWrap" style="display:none">
+        <div id="spSettingsBox"></div>
+        <div class="row" style="margin-top:8px"><button id="btnSpReset">Reset settings</button></div>
+      </div>
       <div class="row">
         <button id="btnSpBack">Back</button>
         <button id="btnSpStart" class="primary big">Start</button>
@@ -207,6 +238,27 @@
       </div>
     </section>
 
+    <section id="scrServers" class="scr">
+      <h2 style="font-size:20px">Public servers</h2>
+      <div class="desc">Always open while anyone is playing. If nobody is there, you open the server and others can join you.</div>
+      <div id="serverList"></div>
+      <div class="status" id="serverStatus"></div>
+      <div class="row">
+        <button id="btnServersBack">Back</button>
+        <button id="btnServersRefresh">Refresh</button>
+      </div>
+    </section>
+
+    <section id="scrKeys" class="scr">
+      <h2 style="font-size:20px">Controls</h2>
+      <div class="desc">Click an action, then press the key you want. Esc cancels. Mouse: look, left click shoots, wheel changes weapon.</div>
+      <div id="keyList"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnKeysBack" class="primary">Done</button>
+        <button id="btnKeysReset">Reset to defaults</button>
+      </div>
+    </section>
+
     <section id="scrPause" class="scr">
       <h2 id="pauseTitle" style="font-size:20px">Paused</h2>
       <div class="desc" id="pauseInfo"></div>
@@ -226,6 +278,23 @@
     <h1 id="deathTitle">You were fragged</h1>
     <p id="deathInfo" style="color:#ffd27a;font-weight:700"></p>
     <p id="deathHint">Click to respawn</p>
+    <p id="deathBest"></p>
+    <div class="row" id="deathButtons">
+      <button id="btnRetry" class="primary big">Try again</button>
+      <button id="btnDeathMenu" class="big">Main menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="victory" class="screen" style="display:none">
+  <div class="panel" style="max-width:560px">
+    <h1 style="font-size:40px">🏆 You beat the game!</h1>
+    <p id="victoryInfo" style="color:#ffd27a;font-weight:700;font-size:18px"></p>
+    <p>You survived the Void on Nightmare hardcore. Everything stays unlocked — play on as long as you like.</p>
+    <div class="row col">
+      <button id="btnVictoryContinue" class="primary big">Keep playing this run</button>
+      <button id="btnVictoryMenu" class="big">Main menu</button>
+    </div>
   </div>
 </div>
 
@@ -307,10 +376,13 @@ const WEAPONS = {
   machinegun: { slot: 3, name: 'Machinegun',      short: 'MG',      ammo: 'bullets', cost: 1, cooldown: 0.085, type: 'hitscan', pellets: 1, spread: 0.022, dmg: 8, range: 120, knock: 0.2, pickupAmmo: 50 },
   rocket:     { slot: 4, name: 'Rocket Launcher', short: 'Rockets', ammo: 'rockets', cost: 1, cooldown: 0.8,   type: 'proj',    speed: 26, dmg: 40, splash: 85, radius: 4.2, knock: 14, color: 0xff8833, pickupAmmo: 5 },
   railgun:    { slot: 5, name: 'Railgun',         short: 'Rail',    ammo: 'slugs',   cost: 1, cooldown: 1.4,   type: 'rail',    dmg: 100, range: 250, knock: 4, pickupAmmo: 5 },
+  // Bouncing grenades with a fuse; they also explode on direct hits
+  grenade:    { slot: 6, name: 'Grenade Launcher', short: 'Grenades', ammo: 'grenades', cost: 1, cooldown: 0.7, type: 'proj', speed: 22, dmg: 30, splash: 80, radius: 4, knock: 12, color: 0x9cff4a, pickupAmmo: 5, gravity: 1, bounce: 0.55, fuse: 2.2, lift: 0.12 },
 };
-const ORDER = ['blaster', 'shotgun', 'machinegun', 'rocket', 'railgun'];
-const AMMO_MAX = { shells: 50, bullets: 200, rockets: 25, slugs: 25 };
-const AMMO_COLORS = { shells: 0xc0392b, bullets: 0xd4a017, rockets: 0x6b7a2a, slugs: 0x1f9e89 };
+const ORDER = ['blaster', 'shotgun', 'machinegun', 'rocket', 'railgun', 'grenade'];
+const AMMO_MAX = { shells: 50, bullets: 200, rockets: 25, slugs: 25, grenades: 30 };
+const AMMO_COLORS = { shells: 0xc0392b, bullets: 0xd4a017, rockets: 0x6b7a2a, slugs: 0x1f9e89, grenades: 0x4a8a2a };
+const emptyAmmo = () => ({ shells: 0, bullets: 0, rockets: 0, slugs: 0, grenades: 0 });
 
 // Health amounts are relative to the match's max health (1 = max health)
 const ITEMS = {
@@ -322,6 +394,8 @@ const ITEMS = {
   bullets:    { kind: 'ammo', ammo: 'bullets', amount: 50, respawn: 15, glow: 0xffcc55 },
   rockets:    { kind: 'ammo', ammo: 'rockets', amount: 5, respawn: 15, glow: 0xffcc55 },
   slugs:      { kind: 'ammo', ammo: 'slugs', amount: 5, respawn: 15, glow: 0xffcc55 },
+  grenade:    { kind: 'weapon', weapon: 'grenade', respawn: 20, glow: 0x66aaff },
+  grenades:   { kind: 'ammo', ammo: 'grenades', amount: 5, respawn: 15, glow: 0xffcc55 },
   health:     { kind: 'health', amount: 0.25, max: 1, respawn: 20, glow: 0x66ff88 },
   mega:       { kind: 'health', amount: 1, max: 2, respawn: 45, glow: 0x55aaff },
   armor:      { kind: 'armor', amount: 50, respawn: 25, glow: 0x88ff44 },
@@ -351,36 +425,69 @@ const DIFFICULTIES = {
 };
 const DIFF_KEYS = Object.keys(DIFFICULTIES);
 
-// Multiplayer settings edited by the host
+// Match settings. Headers only group the rows in the settings editors.
 const SETTINGS_SCHEMA = [
+  { type: 'header', label: 'Match' },
   { key: 'mapMode', label: 'Map choice', type: 'select', options: [['host', 'Host picks'], ['vote', 'Players vote']] },
+  { key: 'fragLimit', label: 'Frag limit', type: 'range', min: 0, max: 100, step: 5, fmt: (v) => (v ? String(v) : 'None') },
+  { key: 'timeLimit', label: 'Time limit', type: 'range', min: 0, max: 30, step: 1, fmt: (v) => (v ? v + ' min' : 'None') },
+  { key: 'respawnDelay', label: 'Respawn delay', type: 'range', min: 0, max: 10, step: 1, fmt: (v) => v + ' s' },
+
+  { type: 'header', label: 'Enemies' },
   { key: 'enemies', label: 'Enemies', type: 'toggle' },
   { key: 'enemyCount', label: 'Max enemies', type: 'range', min: 1, max: 20, step: 1, dep: 'enemies' },
   { key: 'enemyRespawn', label: 'Enemy respawn time', type: 'range', min: 1, max: 30, step: 1, dep: 'enemies', fmt: (v) => v + ' s' },
   { key: 'enemyDifficulty', label: 'Enemy difficulty', type: 'select', options: DIFF_KEYS.map((k) => [k, DIFFICULTIES[k].label]), dep: 'enemies' },
-  { key: 'enemyTypes', label: 'Enemy types', type: 'select', options: [['mixed', 'Grunts + Brutes'], ['grunts', 'Grunts only'], ['brutes', 'Brutes only']], dep: 'enemies' },
+  { key: 'enemyTypes', label: 'Enemy types', type: 'select', dep: 'enemies', options: [
+    ['all', 'All monsters'], ['classic', 'Grunts + Brutes'], ['new', 'Imps + Boomers + Mortars'],
+    ['grunts', 'Grunts only'], ['brutes', 'Brutes only'], ['imps', 'Imps only'], ['boomers', 'Boomers only'], ['mortars', 'Mortars only'],
+  ] },
+  { key: 'enemyHealth', label: 'Enemy health', type: 'range', min: 0.25, max: 4, step: 0.25, dep: 'enemies', fmt: (v) => '×' + v },
+  { key: 'enemyDamage', label: 'Enemy damage', type: 'range', min: 0, max: 4, step: 0.25, dep: 'enemies', fmt: (v) => '×' + v },
+  { key: 'enemySpeed', label: 'Enemy speed', type: 'range', min: 0.5, max: 2, step: 0.1, dep: 'enemies', fmt: (v) => '×' + v.toFixed(1) },
   { key: 'enemyFrags', label: 'Enemy kills give frags', type: 'toggle', dep: 'enemies' },
+
+  { type: 'header', label: 'Player' },
   { key: 'maxHealth', label: 'Max health', type: 'range', min: 50, max: 500, step: 25 },
-  { key: 'startArmor', label: 'Starting armor', type: 'range', min: 0, max: 200, step: 25 },
+  { key: 'healthRegen', label: 'Health regeneration', type: 'range', min: 0, max: 10, step: 1, fmt: (v) => (v ? v + ' /s' : 'Off') },
+  { key: 'startArmor', label: 'Starting armor', type: 'range', min: 0, max: 400, step: 25 },
+  { key: 'maxArmor', label: 'Max armor', type: 'range', min: 0, max: 400, step: 25 },
+  { key: 'speed', label: 'Move speed', type: 'range', min: 0.75, max: 1.5, step: 0.05, fmt: (v) => '×' + v.toFixed(2) },
+  { key: 'jumpHeight', label: 'Jump height', type: 'range', min: 0.5, max: 3, step: 0.25, fmt: (v) => '×' + v },
+  { key: 'airControl', label: 'Air control', type: 'range', min: 0, max: 3, step: 0.25, fmt: (v) => '×' + v },
+  { key: 'gravity', label: 'Gravity', type: 'range', min: 0.4, max: 1.5, step: 0.1, fmt: (v) => '×' + v.toFixed(1) },
+  { key: 'infiniteStamina', label: 'Infinite sprint', type: 'toggle' },
+  { key: 'staminaRate', label: 'Stamina speed (use & refill)', type: 'range', min: 0.25, max: 3, step: 0.25, fmt: (v) => '×' + v },
+  { key: 'fallDamage', label: 'Fall damage', type: 'toggle' },
+
+  { type: 'header', label: 'Weapons' },
   { key: 'startWeapons', label: 'Starting weapons', type: 'select', options: [['blaster', 'Blaster only'], ['all', 'All weapons']] },
   { key: 'infiniteAmmo', label: 'Infinite ammo', type: 'toggle' },
   { key: 'dmgMul', label: 'Weapon damage', type: 'range', min: 0.25, max: 3, step: 0.25, fmt: (v) => '×' + v },
+  { key: 'fireRate', label: 'Fire rate', type: 'range', min: 0.5, max: 3, step: 0.25, fmt: (v) => '×' + v },
+  { key: 'projSpeed', label: 'Projectile speed', type: 'range', min: 0.5, max: 2.5, step: 0.25, fmt: (v) => '×' + v },
+  { key: 'rocketKnock', label: 'Rocket knockback', type: 'range', min: 0, max: 3, step: 0.25, fmt: (v) => '×' + v },
+  { key: 'grenadePower', label: 'Grenade launch power', type: 'range', min: 0.5, max: 2.5, step: 0.25, fmt: (v) => '×' + v },
   { key: 'selfDamage', label: 'Self damage (rockets)', type: 'toggle' },
+
+  { type: 'header', label: 'Items' },
+  { key: 'weaponPickups', label: 'Weapon pickups', type: 'toggle' },
+  { key: 'healthPickups', label: 'Health & armor pickups', type: 'toggle' },
   { key: 'itemRespawn', label: 'Item respawn time', type: 'range', min: 0.25, max: 3, step: 0.25, fmt: (v) => '×' + v },
-  { key: 'gravity', label: 'Gravity', type: 'range', min: 0.4, max: 1.5, step: 0.1, fmt: (v) => '×' + v.toFixed(1) },
-  { key: 'speed', label: 'Move speed', type: 'range', min: 0.75, max: 1.5, step: 0.05, fmt: (v) => '×' + v.toFixed(2) },
-  { key: 'respawnDelay', label: 'Respawn delay', type: 'range', min: 0, max: 10, step: 1, fmt: (v) => v + ' s' },
-  { key: 'fragLimit', label: 'Frag limit', type: 'range', min: 0, max: 100, step: 5, fmt: (v) => (v ? String(v) : 'None') },
-  { key: 'timeLimit', label: 'Time limit', type: 'range', min: 0, max: 30, step: 1, fmt: (v) => (v ? v + ' min' : 'None') },
 ];
 const DEFAULT_SETTINGS = {
-  mapMode: 'host', enemies: false, enemyCount: 6, enemyRespawn: 8, enemyDifficulty: 'medium', enemyTypes: 'mixed',
-  enemyFrags: true, maxHealth: 100, startArmor: 0, startWeapons: 'blaster', infiniteAmmo: false, dmgMul: 1,
-  selfDamage: true, itemRespawn: 1, gravity: 1, speed: 1, respawnDelay: 1, fragLimit: 20, timeLimit: 10,
+  mapMode: 'host', fragLimit: 20, timeLimit: 10, respawnDelay: 1,
+  enemies: false, enemyCount: 6, enemyRespawn: 8, enemyDifficulty: 'medium', enemyTypes: 'all',
+  enemyHealth: 1, enemyDamage: 1, enemySpeed: 1, enemyFrags: true,
+  maxHealth: 100, healthRegen: 0, startArmor: 0, maxArmor: 200, speed: 1, jumpHeight: 1, airControl: 1, gravity: 1,
+  infiniteStamina: false, staminaRate: 1, fallDamage: false,
+  startWeapons: 'blaster', infiniteAmmo: false, dmgMul: 1, fireRate: 1, projSpeed: 1, rocketKnock: 1, grenadePower: 1, selfDamage: false,
+  weaponPickups: true, healthPickups: true, itemRespawn: 1,
 };
-function sanitizeSettings(src) {
-  const out = { ...DEFAULT_SETTINGS };
-  for (const f of SETTINGS_SCHEMA) {
+function sanitizeWith(src, schema, defaults) {
+  const out = { ...defaults };
+  for (const f of schema) {
+    if (f.type === 'header') continue;
     const v = src ? src[f.key] : undefined;
     if (v === undefined) continue;
     if (f.type === 'toggle') out[f.key] = !!v;
@@ -389,17 +496,117 @@ function sanitizeSettings(src) {
   }
   return out;
 }
+const sanitizeSettings = (src) => sanitizeWith(src, SETTINGS_SCHEMA, DEFAULT_SETTINGS);
+// Saved settings from older versions had self damage on by default; switch it off once
+try {
+  if (localStorage.getItem('arena3d-settings-version') !== '2') {
+    for (const key of ['arena3d-settings', 'arena3d-spsettings']) {
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      if (saved) { saved.selfDamage = false; localStorage.setItem(key, JSON.stringify(saved)); }
+    }
+    localStorage.setItem('arena3d-settings-version', '2');
+  }
+} catch { /* ignore */ }
+
+// More monsters: a flying imp, a suicide runner and a lobbing mortar
+Object.assign(ENEMY_TYPES, {
+  imp: {
+    name: 'Imp', hp: 1, oneHit: true, speed: 7.5, radius: 0.35, height: 1.3, scale: [0.65, 0.65, 0.65],
+    look: { skin: 0x7a2a8a, shirt: 0x4a1a5a, pants: 0x2a0a30, eye: 0x66ffcc, pads: 0x9a3aaa },
+    ranged: true, projSpeed: 30, projColor: 0x66ffcc, dmg: 7, fireCd: [0.7, 1.4], keepDist: 9, knockScale: 1.4, drop: 0.3,
+    fly: 3.5, // hovers this high above its target
+    decorate(m) {
+      const mat = new THREE.MeshStandardMaterial({ color: 0x3a0a4a, roughness: 0.6, side: THREE.DoubleSide });
+      m.mats.push(mat);
+      for (const sx of [-1, 1]) {
+        const wing = new THREE.Mesh(unitBox, mat);
+        wing.scale.set(0.9, 0.5, 0.04);
+        wing.position.set(sx * 0.55, 1.45, -0.25);
+        wing.rotation.y = sx * 0.5;
+        m.root.add(wing);
+        m.wings = (m.wings || []).concat(wing);
+      }
+    },
+  },
+  boomer: {
+    name: 'Boomer', hp: 50, speed: 7.2, radius: 0.45, height: 1.6, scale: [1.1, 0.8, 1.1],
+    look: { skin: 0xd8d040, shirt: 0xc03020, pants: 0x301010, eye: 0xffffff, pads: 0xff6020 },
+    kamikaze: { dmg: 70, radius: 4.5, fuse: 0.55 }, // runs at you and explodes
+    knockScale: 1.2, drop: 0.3,
+    decorate(m) {
+      const mat = new THREE.MeshStandardMaterial({ color: 0xff5010, emissive: 0xff3300, emissiveIntensity: 1.2 });
+      m.mats.push(mat);
+      const belly = new THREE.Mesh(unitBox, mat);
+      belly.scale.set(0.5, 0.4, 0.2);
+      belly.position.set(0, 1.15, 0.2);
+      m.root.add(belly);
+    },
+  },
+  mortar: {
+    name: 'Mortar', hp: 220, speed: 2.2, radius: 0.6, height: 2.0, scale: [1.4, 1.0, 1.4],
+    look: { skin: 0x5a6068, shirt: 0x3a4048, pants: 0x22262a, eye: 0xff9900, pads: 0x70767e },
+    ranged: true, lob: true, projSplash: 45, projRadius: 3.5, projColor: 0xffaa33, dmg: 15, projSpeed: 20,
+    fireCd: [2.2, 3.5], keepDist: 20, knockScale: 0.4, drop: 0.7,
+    decorate(m) {
+      const mat = new THREE.MeshStandardMaterial({ color: 0x2a2e33, roughness: 0.5, metalness: 0.5 });
+      m.mats.push(mat);
+      const tube = new THREE.Mesh(cylGeo, mat);
+      tube.scale.set(0.16, 0.9, 0.16);
+      tube.rotation.x = -0.6;
+      tube.position.set(0, 1.75, -0.15);
+      m.root.add(tube);
+    },
+  },
+});
+
+// Singleplayer settings: the difficulty buttons set the enemy strength, and
+// 0 for enemy count / respawn means "use the difficulty's value"
+const MP_ONLY_SETTINGS = new Set(['mapMode', 'fragLimit', 'timeLimit', 'enemyDifficulty', 'enemyFrags']);
+const SP_OVERRIDES = {
+  enemyCount: { key: 'enemyCount', label: 'Max enemies', type: 'range', min: 0, max: 25, step: 1, dep: 'enemies', fmt: (v) => (v ? String(v) : 'Auto') },
+  enemyRespawn: { key: 'enemyRespawn', label: 'Enemy respawn time', type: 'range', min: 0, max: 30, step: 1, dep: 'enemies', fmt: (v) => (v ? v + ' s' : 'Auto') },
+};
+const SP_SCHEMA = SETTINGS_SCHEMA
+  .filter((f) => !MP_ONLY_SETTINGS.has(f.key))
+  .map((f) => SP_OVERRIDES[f.key] || f)
+  .filter((f, i, a) => f.type !== 'header' || (a[i + 1] && a[i + 1].type !== 'header'));
+const SP_DEFAULTS = { ...DEFAULT_SETTINGS, enemies: true, enemyCount: 0, enemyRespawn: 0, fragLimit: 0, timeLimit: 0 };
+// Fixed hardcore preset: insane enemies, no extras, no rocket self damage, slower pickups, one life
+const HARDCORE_SETTINGS = {
+  ...DEFAULT_SETTINGS, enemies: true, enemyCount: 0, enemyRespawn: 0, enemyTypes: 'all', fragLimit: 0, timeLimit: 0,
+  maxHealth: 100, healthRegen: 0, startArmor: 0, maxArmor: 200, startWeapons: 'blaster', infiniteAmmo: false,
+  dmgMul: 1, fireRate: 1, projSpeed: 1, rocketKnock: 1, grenadePower: 1, selfDamage: false, itemRespawn: 1.5,
+  gravity: 1, speed: 1, jumpHeight: 1, airControl: 1, infiniteStamina: false, fallDamage: false,
+  enemyHealth: 1, enemyDamage: 1, enemySpeed: 1, weaponPickups: true, healthPickups: true, respawnDelay: 0,
+};
+const HARDCORE_DIFFICULTY = 'insane';
+// Reaching this many frags in hardcore on the secret map beats the game
+const VICTORY_FRAGS = 20;
+
+// Public servers: fixed rooms that stay open while anyone is in them.
+// The first player to arrive becomes the host; if the host leaves, another player takes over.
+const PUBLIC_ROTATION = ['keep', 'towers', 'canyon', 'warehouse'];
+const PUBLIC_SERVERS = [
+  { n: 1, name: 'Server 1 · Deathmatch', desc: 'Classic free-for-all. First to 25 frags or 10 minutes.',
+    settings: { fragLimit: 25, timeLimit: 10, respawnDelay: 1 } },
+  { n: 2, name: 'Server 2 · Monster Co-op', desc: 'Everyone against hordes of monsters. Most frags after 12 minutes wins.',
+    settings: { fragLimit: 0, timeLimit: 12, enemies: true, enemyCount: 12, enemyRespawn: 5, enemyDifficulty: 'hard', enemyTypes: 'all', enemyFrags: true, maxHealth: 150, healthRegen: 3 } },
+  { n: 3, name: 'Server 3 · Chaos', desc: 'All weapons, infinite ammo, low gravity, huge knockback. First to 30.',
+    settings: { fragLimit: 30, timeLimit: 8, startWeapons: 'all', infiniteAmmo: true, gravity: 0.6, jumpHeight: 1.5, rocketKnock: 2, grenadePower: 1.5, healthRegen: 5, selfDamage: false } },
+];
 
 // Values that change with the match settings
-const phys = { gravity: CFG.gravity, walk: CFG.walkSpeed, sprint: CFG.sprintSpeed };
+const phys = { gravity: CFG.gravity, walk: CFG.walkSpeed, sprint: CFG.sprintSpeed, jump: CFG.jumpSpeed, airAccel: CFG.accelAir };
 const match = {
   active: false, mapId: 'keep', difficulty: 'medium', settings: { ...DEFAULT_SETTINGS },
-  timeLeft: 0, enemyCfg: null, roster: [],
+  timeLeft: 0, enemyCfg: null, roster: [], hardcore: false, over: false, survived: 0,
 };
 function applyPhysics(s) {
   phys.gravity = CFG.gravity * s.gravity;
   phys.walk = CFG.walkSpeed * s.speed;
   phys.sprint = CFG.sprintSpeed * s.speed;
+  phys.jump = CFG.jumpSpeed * Math.sqrt(s.jumpHeight);
+  phys.airAccel = CFG.accelAir * s.airControl;
 }
 
 // ============================================================
@@ -748,6 +955,12 @@ function pad(x, y, z, tx, ty, tz, apex) { mapData.pads.push({ pos: new V3(x, y, 
 function teleporter(x, y, z, dx, dy, dz, yaw) {
   mapData.teleports.push({ pos: new V3(x, y, z), dest: new V3(dx, dy, dz), yaw: yaw ?? Math.atan2(dx, dz) });
 }
+// Two-way portal: each end sends you to the other one, arriving a step in front of it
+function portal(ax, ay, az, ayaw, bx, by, bz, byaw) {
+  const out = (x, y, z, yaw) => new V3(x - Math.sin(yaw) * 1.8, y, z - Math.cos(yaw) * 1.8);
+  mapData.teleports.push({ pos: new V3(ax, ay, az), dest: out(bx, by, bz, byaw), yaw: byaw, twoWay: true });
+  mapData.teleports.push({ pos: new V3(bx, by, bz), dest: out(ax, ay, az, ayaw), yaw: ayaw, twoWay: true });
+}
 function light(x, y, z, color, intensity, dist) { mapData.lights.push([x, y, z, color, intensity, dist]); }
 function spawnP(x, y, z, yaw) { mapData.spawns.push([x, y, z, yaw ?? Math.atan2(x, z)]); }
 function spawnE(x, y, z) { mapData.enemySpawns.push([x, y, z]); }
@@ -860,6 +1073,7 @@ const MAPS = [
         ['health', -47, 0, -10], ['health', -25, 0, 35], ['health', 25, 0, -35], ['health', 38, 0, 17],
         ['health', -10, 5, -45], ['health', 10, 5, -45], ['health', 8, 0, 24],
         ['mega', 46, 0, 38], ['armor', -47, 0, -17], ['armor', 26, 0, 26], ['heavyArmor', 0, 3, 46],
+        ['grenade', -20, 0, -20], ['grenades', 20, 0, 20],
       ]) item(...it);
     },
   },
@@ -925,6 +1139,7 @@ const MAPS = [
         ['health', -8, 4, -40], ['health', 8, 4, 40],
         ['shells', -25, 0, 25], ['shells', 25, 0, 8], ['bullets', 30, 0, 20], ['bullets', -30, 0, -25],
         ['rockets', 0, 8, -20], ['rockets', 0, 8, 20], ['slugs', 8, 4, -40], ['slugs', -8, 4, 40],
+        ['grenade', -15, 0, 15], ['grenades', 15, 0, -15],
       ]) item(...it);
     },
   },
@@ -983,6 +1198,7 @@ const MAPS = [
         ['health', -30, 0, 12], ['health', 30, 0, -12], ['health', -12, 0, -20], ['health', 12, 0, 22], ['health', -44, 0, -24], ['health', 44, 0, 26],
         ['shells', -20, 0, 26], ['shells', 20, 0, -26], ['bullets', 40, 0, -6], ['bullets', -40, 0, 6],
         ['rockets', -28, 4, -30], ['rockets', 20, 4, 44], ['slugs', 44, 0, -44], ['slugs', -47, 0, 20],
+        ['grenade', -10, 0, -20], ['grenades', 10, 0, 20],
       ]) item(...it);
     },
   },
@@ -1063,11 +1279,143 @@ const MAPS = [
         ['health', -12, 0, -6], ['health', 12, 0, 6], ['health', -30, 0, -24], ['health', 30, 0, 24], ['health', 30, 0, -24], ['health', -30, 0, 24],
         ['shells', -18, 4, 0], ['shells', 14, 0, 24], ['bullets', 18, 4, -8], ['bullets', -24, 0, -34],
         ['rockets', 20, 0, -26], ['rockets', -18, 1.2, 32], ['slugs', 8, 0, -42], ['slugs', 40, 0, 16],
+        ['grenade', -12, 0, 0], ['grenades', 26, 0, -26],
+      ]) item(...it);
+    },
+  },
+
+  {
+    id: 'spire', name: 'Spire', desc: 'Enclosed vertical tower: two-way portals, super jumps and a spiral to the ceiling.',
+    half: 32, ground: 'floor', wall: 'marble', ceiling: 42, jump: 1.6,
+    unlock: { need: 10, maps: ['keep', 'towers', 'canyon', 'warehouse'] },
+    preview: 'linear-gradient(#1a1030, #3a2a6a 55%, #5b5249 56%, #b050ff)',
+    theme: { sky: ['#0a0614', '#1a1030', '#2a1a4a', '#0a0614'], bg: 0x120c1e, fog: [0x1a1228, 30, 110], hemi: [0xb0a0e0, 0x3a3048, 1.25], sun: [0xffffff, 0] },
+    build() {
+      // Core pillar from floor to ceiling
+      solid(-4, 0, -4, 4, 42, 4, 'metal');
+      // Spiral of platforms around the core, 3.5 m apart in height
+      for (let i = 0; i < 10; i++) {
+        const a = i * (Math.PI * 2 / 9), y = 3.5 * (i + 1);
+        const x = Math.cos(a) * 11, z = Math.sin(a) * 11;
+        solid(x - 2.5, y - 0.5, z - 2.5, x + 2.5, y, z + 2.5, i === 9 ? 'trim' : 'metal');
+      }
+      // Wall ledges at 10 m and 24 m
+      for (const y of [10, 24]) {
+        solid(-32, y - 0.4, -32, 32, y, -29, 'stone');
+        solid(-32, y - 0.4, 29, 32, y, 32, 'stone');
+        solid(-32, y - 0.4, -29, -29, y, 29, 'stone');
+        solid(29, y - 0.4, -29, 32, y, 29, 'stone');
+      }
+      // Staircase along the south wall up to the lower ledge
+      stairs(-10, 27.5, '+x', 3, 0, 10, 0.6, 'stone');
+      // Corner towers of rising height
+      solid(18.5, 0, -25.5, 25.5, 7, -18.5, 'marble');
+      solid(18.5, 0, 18.5, 25.5, 14, 25.5, 'marble');
+      solid(-25.5, 0, 18.5, -18.5, 21, 25.5, 'marble');
+      solid(-25.5, 0, -25.5, -18.5, 28, -18.5, 'marble');
+      // Floating stepping stones between towers and ledges
+      solid(26.5, 10.5, -14, 28.5, 11, -12, 'metal');
+      solid(-14, 17.5, 26.5, -12, 18, 28.5, 'metal');
+      solid(-28.5, 24.5, -14, -26.5, 25, -12, 'metal');
+      // Bridge from the core to the upper north ledge
+      solid(-1.5, 23.6, -29, 1.5, 24, -4, 'metal');
+      // Lava pools on the floor
+      lavaPool(8, 10, 15, 16);
+      lavaPool(-16, -16, -9, -9);
+
+      pad(0, 0, -22, 0, 10, -30.5, 13);
+      pad(-22, 0, 0, -30.5, 10, -8, 13);
+      pad(22, 0, -6, 30.5, 24, -14, 28);
+      pad(8, 0, 22, 8, 24, 30.5, 28);
+      portal(-12, 0, -12, Math.PI * 0.25 + Math.PI, -22, 28, -22, Math.PI * 0.25);
+      portal(12, 0, 12, Math.PI * 0.25, 30.5, 24, 0, 0);
+      portal(-30.5, 10, 0, 0, 0, 24, 30.5, Math.PI / 2);
+      portal(11, 35, 1.2, 0, 0, 0, 16, 0);
+
+      for (const [x, y, z, c] of [[0, 3, -16, 0xb080ff], [16, 3, 0, 0x80c0ff], [0, 3, 16, 0xff90d0], [-16, 3, 0, 0x90ffd0],
+        [0, 20, -26, 0xb080ff], [26, 20, 0, 0x80c0ff], [0, 34, 26, 0xff90d0], [-26, 34, 0, 0x90ffd0]]) light(x, y, z, c, 70, 34);
+
+      spawnP(-14, 0, 14); spawnP(14, 0, -14); spawnP(0, 0, 24, 0); spawnP(-24, 0, -8);
+      spawnP(0, 10, -30.5, Math.PI); spawnP(30.5, 10, -20); spawnP(-30.5, 24, 16); spawnP(20, 24, 30.5);
+      for (const p of [[14, 0, 0], [-14, 0, 4], [0, 0, -14], [6, 0, 22], [-24, 0, 8], [24, 0, 4], [0, 10, 30.5], [-30.5, 10, 16],
+        [30.5, 10, -8], [16, 24, -30.5], [-16, 24, 30.5], [30.5, 24, 16], [22, 7, -22], [22, 14, 22]]) spawnE(...p);
+      for (const p of [[0, 0, 12], [12, 0, 0], [-12, 0, 0], [0, 0, -10], [20, 0, 14], [-20, 0, -4]]) wander(...p);
+
+      for (const it of [
+        ['rocket', 11, 35, 0], ['railgun', -22, 21, 22], ['machinegun', 22, 14, 22], ['shotgun', 14, 0, -6],
+        ['mega', -22, 28, -24.5], ['heavyArmor', 0, 24, -18], ['armor', 30.5, 10, 26], ['armor', -30.5, 24, -26],
+        ['health', -8, 0, 14], ['health', 14, 0, -18], ['health', 0, 10, 30.5], ['health', -30.5, 10, -24], ['health', 30.5, 24, -24], ['health', -26, 24, 30.5],
+        ['shells', 20, 0, 4], ['shells', -30.5, 10, 24], ['bullets', 22, 7, -22], ['bullets', 24, 24, -30.5],
+        ['rockets', 11 * Math.cos(Math.PI * 16 / 9), 31.5, 11 * Math.sin(Math.PI * 16 / 9)], ['rockets', -14, 0, 22],
+        ['slugs', 30.5, 24, 24], ['slugs', -16, 10, -30.5],
+        ['grenade', 22, 7, -20], ['grenades', -6, 0, -20],
+      ]) item(...it);
+    },
+  },
+
+  {
+    // Secret map: hidden from the map lists, opened with the lock on the singleplayer screen
+    id: 'void', secret: true, name: 'The Void', desc: 'Islands of rock over a sea of fire.',
+    half: 40, ground: 'rock', wall: 'rock', jump: 1.25, hardcoreDifficulty: 'nightmare',
+    unlock: { need: 10, maps: ['keep', 'towers', 'canyon', 'warehouse', 'spire'] },
+    preview: 'linear-gradient(#000, #6a0a0a 55%, #2a1010 56%, #e04a00)',
+    theme: { sky: ['#000000', '#140000', '#7a1208', '#000000'], bg: 0x050000, fog: [0x1a0505, 30, 130], hemi: [0xff9a8a, 0x300808, 0.85], sun: [0xff6a40, 1.4] },
+    build() {
+      // Everything below the islands is lava
+      lavaPool(-40, -40, 40, 40, 'lava', false);
+      const isl = (x0, z0, x1, z1) => solid(x0, 0, z0, x1, 0.5, z1, 'rock');
+      isl(-10, -10, 10, 10);
+      isl(-32, -6, -20, 6); isl(20, -6, 32, 6); isl(-6, -32, 6, -20); isl(-6, 20, 6, 32);
+      isl(-36, -36, -26, -26); isl(26, 26, 36, 36); isl(26, -36, 36, -26); isl(-36, 26, -26, 36);
+      // Bridges: center to north and south, west to its corner, east to its corner
+      solid(-1.5, 0, -20, 1.5, 0.5, -10, 'metal');
+      solid(-1.5, 0, 10, 1.5, 0.5, 20, 'metal');
+      solid(-30, 0, -26, -27, 0.5, -6, 'metal');
+      solid(27, 0, 6, 30, 0.5, 26, 'metal');
+      // Obelisks on the center island
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) solid(5 * sx - 0.6, 0.5, 5 * sz - 0.6, 5 * sx + 0.6, 5.5, 5 * sz + 0.6, 'stone');
+      // Floating platforms over the outer islands and an altar above the center
+      solid(-3, 8.5, -29, 3, 9, -23, 'metal');
+      solid(-3, 8.5, 23, 3, 9, 29, 'metal');
+      solid(-29, 8.5, -3, -23, 9, 3, 'metal');
+      solid(23, 8.5, -3, 29, 9, 3, 'metal');
+      solid(-3, 15.5, -3, 3, 16, 3, 'trim');
+
+      pad(0, 0.5, -7, 0, 9, -26, 13);
+      pad(0, 0.5, 7, 0, 9, 26, 13);
+      pad(7, 0.5, 5, 26, 9, 0, 13);
+      pad(-7, 0.5, -5, -26, 9, 0, 13);
+      pad(0, 9, -24, 0, 16, -1, 20);
+      portal(8, 0.5, 0, Math.PI / 2, 24, 0.5, 0, -Math.PI / 2);
+      portal(-8, 0.5, 0, -Math.PI / 2, -24, 0.5, 0, Math.PI / 2);
+      portal(31, 0.5, -31, 0, -31, 0.5, 31, Math.PI);
+
+      for (const [x, y, z] of [[0, 7, 0], [-26, 5, -26], [26, 5, 26], [26, 5, -26], [-26, 5, 26]]) light(x, y, z, 0xff4a20, 60, 30);
+
+      spawnP(0, 0.5, -4, 0); spawnP(0, 0.5, 4, Math.PI); spawnP(-28, 0.5, 3); spawnP(28, 0.5, -3);
+      spawnP(0, 0.5, -27, Math.PI); spawnP(0, 0.5, 27, 0); spawnP(-31, 0.5, -31); spawnP(31, 0.5, 31);
+      for (const p of [[-7, 0.5, -8], [7, 0.5, 8], [0, 0.5, -29], [0, 0.5, 29], [-28, 0.5, -3], [28, 0.5, 3], [-31, 0.5, -31],
+        [31, 0.5, 31], [31, 0.5, -29], [-31, 0.5, 29], [0, 9, -26], [0, 9, 26], [-26, 9, 0], [26, 9, 0]]) spawnE(...p);
+      for (const p of [[0, 0.5, 0], [0, 0.5, -15], [0, 0.5, 15], [-28.5, 0.5, -16], [28.5, 0.5, 16], [-8, 0.5, 8]]) wander(...p);
+
+      for (const it of [
+        ['grenade', 0, 16, 0], ['rocket', 0, 9, -26], ['railgun', 0, 9, 26], ['shotgun', -28, 0.5, 4], ['machinegun', 28, 0.5, -4],
+        ['mega', 31, 0.5, -31], ['heavyArmor', -31, 0.5, 31], ['armor', -26, 9, 0], ['armor', 26, 9, 0],
+        ['health', -31, 0.5, -31], ['health', 31, 0.5, 31], ['health', 0, 0.5, -29], ['health', 0, 0.5, 29], ['health', -3, 0.5, 8], ['health', 3, 0.5, -8],
+        ['shells', 0, 0.5, -2], ['bullets', 2, 0.5, 2], ['rockets', -28.5, 0.5, -16], ['slugs', 28.5, 0.5, 16],
+        ['grenades', 0, 0.5, 26], ['grenades', 0, 0.5, -26],
       ]) item(...it);
     },
   },
 ];
 const mapById = (id) => MAPS.find((m) => m.id === id) || MAPS[0];
+// Maps with an "unlock" rule need hardcore best scores on other maps
+function unlockProgress(m, bests = loadBests()) {
+  if (!m.unlock) return { unlocked: true, done: 0, total: 0 };
+  const done = m.unlock.maps.filter((id) => (bests[id] ? bests[id].frags : 0) >= m.unlock.need).length;
+  return { unlocked: done >= m.unlock.maps.length, done, total: m.unlock.maps.length };
+}
+const isMapUnlocked = (id) => unlockProgress(mapById(id)).unlocked;
 
 // ---------- Loading ----------
 let currentMap = MAPS[0];
@@ -1126,6 +1474,15 @@ function loadMap(id) {
   solid(-W - 1, 0, W, W + 1, 12, W + 1, def.wall);
   solid(-W - 1, 0, -W, -W, 12, W, def.wall);
   solid(W, 0, -W, W + 1, 12, W, def.wall);
+  if (def.ceiling) {
+    // Enclosed map: walls up to the roof and a ceiling
+    solid(-W - 1, 12, -W - 1, W + 1, def.ceiling, -W, def.wall);
+    solid(-W - 1, 12, W, W + 1, def.ceiling, W + 1, def.wall);
+    solid(-W - 1, 12, -W, -W, def.ceiling, W, def.wall);
+    solid(W, 12, -W, W + 1, def.ceiling, W, def.wall);
+    solid(-W - 1, def.ceiling, -W - 1, W + 1, def.ceiling + 1, W + 1, 'metal');
+  }
+  phys.jump = CFG.jumpSpeed * Math.sqrt(match.settings.jumpHeight || 1) * (def.jump || 1);
 
   mapData = { spawns: [], enemySpawns: [], wander: [], items: [], pads: [], teleports: [], lava: [], lights: [] };
   def.build();
@@ -1162,7 +1519,7 @@ function loadMap(id) {
     t.ring.position.set(t.pos.x, t.pos.y + 0.1, t.pos.z);
     world.add(t.ring);
     glowDisc(t.pos.x, t.pos.y + 0.12, t.pos.z, 2.4, 0xb050ff, 0.9);
-    glowDisc(t.dest.x, t.dest.y + 0.05, t.dest.z, 1.6, 0xb050ff, 0.35);
+    if (!t.twoWay) glowDisc(t.dest.x, t.dest.y + 0.05, t.dest.z, 1.6, 0xb050ff, 0.35);
   }
   for (const [x, y, z, color, intensity, dist] of mapData.lights) {
     const l = new THREE.PointLight(color, intensity, dist, 2);
@@ -1172,7 +1529,13 @@ function loadMap(id) {
   PLAYER_SPAWNS = mapData.spawns;
   ENEMY_SPAWNS = mapData.enemySpawns;
   WANDER_POINTS = [...ENEMY_SPAWNS, ...mapData.wander];
-  for (const [t, x, y, z] of mapData.items) addItem(t, x, y, z);
+  const s = match.settings;
+  for (const [t, x, y, z] of mapData.items) {
+    const kind = ITEMS[t].kind;
+    if (kind === 'weapon' && !s.weaponPickups) continue;
+    if ((kind === 'health' || kind === 'armor') && !s.healthPickups) continue;
+    addItem(t, x, y, z);
+  }
 }
 
 // ============================================================
@@ -1285,6 +1648,19 @@ function inLava(pos) {
   for (const L of LAVA) if (pos.x > L.x0 && pos.x < L.x1 && pos.z > L.z0 && pos.z < L.z1) return true;
   return false;
 }
+// Highest walkable top at (x, z) that is not above maxY (0 = the floor)
+function supportHeight(x, z, maxY) {
+  let h = 0;
+  for (const c of colliders) {
+    if (x > c.min.x - 0.2 && x < c.max.x + 0.2 && z > c.min.z - 0.2 && z < c.max.z + 0.2 && c.max.y <= maxY && c.max.y > h) h = c.max.y;
+  }
+  return h;
+}
+// True if walking to (x, z) from height y would end up standing in lava
+function dangerAhead(x, z, y) {
+  if (!lavaAhead(x, z)) return false;
+  return supportHeight(x, z, y + 0.5) < 0.35;
+}
 function lavaAhead(x, z) {
   for (const L of LAVA) if (x > L.x0 - 0.5 && x < L.x1 + 0.5 && z > L.z0 - 0.5 && z < L.z1 + 0.5) return true;
   return false;
@@ -1357,6 +1733,8 @@ const Sound = (() => {
       case 'jump': tone(280, 440, 0.08, 'sine', 0.08 * v); break;
       case 'empty': tone(1400, 1400, 0.03, 'square', 0.08 * v); break;
       case 'switch': tone(300, 500, 0.05, 'square', 0.06 * v); break;
+      case 'grenade': tone(320, 120, 0.15, 'square', 0.14 * v); noise(900, 200, 0.18, 0.35 * v); break;
+      case 'bounce': tone(700, 500, 0.04, 'triangle', 0.1 * v); break;
       case 'frag': tone(660, 1320, 0.12, 'square', 0.18 * v); tone(990, 1980, 0.16, 'square', 0.14 * v, 0.1); break;
       case 'lava': noise(500, 200, 0.2, 0.3 * v); break;
       case 'start': tone(330, 660, 0.2, 'square', 0.15 * v); tone(495, 990, 0.3, 'square', 0.12 * v, 0.18); break;
@@ -1678,6 +2056,14 @@ function buildWeaponModel(id) {
       box(0.06, 0.15, 0.08, dark, 0, -0.1, 0.04);
       mz = -0.7;
       break;
+    case 'grenade':
+      cyl(0.075, 0.42, gunMat(0x3d5a2a), 0, 0.05, -0.25);
+      cyl(0.09, 0.05, dark, 0, 0.05, -0.46);
+      box(0.16, 0.14, 0.14, gunMat(0x2a2c30), 0, 0.0, -0.02);
+      box(0.06, 0.15, 0.08, dark, 0, -0.1, 0.08);
+      box(0.12, 0.03, 0.1, gunMat(0x9cff4a, 0x66cc22), 0, 0.09, -0.02);
+      mz = -0.5;
+      break;
   }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   const muzzle = new THREE.Object3D();
@@ -1752,7 +2138,7 @@ const player = {
 };
 const state = {
   alive: true, health: 100, armor: 0, frags: 0, deaths: 0,
-  weapons: { blaster: true }, ammo: { shells: 0, bullets: 0, rockets: 0, slugs: 0 },
+  weapons: { blaster: true }, ammo: emptyAmmo(),
   weapon: 'blaster', lastWeapon: 'blaster', fireCd: 0, switchT: 0, recoil: 0, muzzleT: 0,
   stamina: CFG.staminaMax, exhausted: false, sprinting: false,
   invuln: 0, decayT: 0, teleCd: 0, deathT: 0, deathYaw: 0,
@@ -1787,14 +2173,40 @@ try {
   spDiff = localStorage.getItem('arena3d-spdiff') || spDiff;
 } catch { /* ignore */ }
 if (!DIFFICULTIES[spDiff]) spDiff = 'medium';
+if (!MAPS.some((m) => m.id === spMap)) spMap = 'keep';
+let spSettings = { ...SP_DEFAULTS };
+let spHardcore = false;
+try {
+  const saved = JSON.parse(localStorage.getItem('arena3d-spsettings') || 'null');
+  if (saved) spSettings = sanitizeWith(saved, SP_SCHEMA, SP_DEFAULTS);
+  spHardcore = localStorage.getItem('arena3d-hardcore') === '1';
+} catch { /* ignore */ }
+
+// Hardcore best scores per map: { mapId: { frags, time } }
+function loadBests() {
+  try { return JSON.parse(localStorage.getItem('arena3d-hc-best') || '{}') || {}; } catch { return {}; }
+}
+function saveBest(mapId, frags, time) {
+  const all = loadBests();
+  const old = all[mapId];
+  const better = !old || frags > old.frags || (frags === old.frags && time > old.time);
+  if (better) {
+    all[mapId] = { frags, time: Math.round(time) };
+    try { localStorage.setItem('arena3d-hc-best', JSON.stringify(all)); } catch { /* ignore */ }
+  }
+  return { better, old };
+}
 
 function showScreen(name) {
   currentScreen = name;
-  for (const s of ['Main', 'Single', 'Lobby', 'Pause']) $('scr' + s).classList.toggle('active', s === name);
+  for (const s of ['Main', 'Single', 'Lobby', 'Pause', 'Servers', 'Keys']) $('scr' + s).classList.toggle('active', s === name);
   overlay.style.display = 'flex';
   if (name === 'Lobby') renderLobby();
   if (name === 'Pause') renderPause();
   if (name === 'Single') renderSingle();
+  if (name === 'Keys') renderKeys();
+  if (name === 'Servers') renderServers(true);
+  if (name === 'Main') renderMain();
 }
 function hideOverlay() {
   overlay.style.display = 'none';
@@ -1830,6 +2242,7 @@ function toggleView() {
 function buildMapCards(container, onPick) {
   container.innerHTML = '';
   for (const m of MAPS) {
+    if (m.secret) continue; // secret maps are only reachable through the lock
     const c = document.createElement('div');
     c.className = 'mapCard';
     c.dataset.id = m.id;
@@ -1839,6 +2252,11 @@ function buildMapCards(container, onPick) {
   }
 }
 buildMapCards($('spMaps'), (id) => {
+  if (!isMapUnlocked(id)) {
+    const pr = unlockProgress(mapById(id));
+    $('spDiffDesc').textContent = `🔒 ${mapById(id).name} unlocks when you score ${mapById(id).unlock.need}+ in Hardcore on every other map (${pr.done}/${pr.total} done).`;
+    return;
+  }
   spMap = id;
   try { localStorage.setItem('arena3d-spmap', id); } catch { /* ignore */ }
   renderSingle();
@@ -1856,70 +2274,133 @@ for (const k of DIFF_KEYS) {
   $('spDiffs').appendChild(b);
 }
 function renderSingle() {
-  for (const c of $('spMaps').children) c.classList.toggle('sel', c.dataset.id === spMap);
-  for (const b of $('spDiffs').children) b.classList.toggle('sel', b.dataset.id === spDiff);
-  const d = DIFFICULTIES[spDiff];
-  $('spDiffDesc').textContent = `${d.label}: ${d.desc} (${d.count} enemies at a time)`;
+  const bests = loadBests();
+  if (!isMapUnlocked(spMap)) spMap = 'keep';
+  const secretMap = MAPS.find((m) => m.secret);
+  const diff = spHardcore ? (mapById(spMap).hardcoreDifficulty || HARDCORE_DIFFICULTY) : spDiff;
+  for (const c of $('spMaps').children) {
+    c.classList.toggle('sel', c.dataset.id === spMap);
+    // In hardcore mode the cards show the best score for each map
+    const badge = c.querySelector('.votes');
+    const b = bests[c.dataset.id];
+    const pr = unlockProgress(mapById(c.dataset.id), bests);
+    c.classList.toggle('lockedMap', !pr.unlocked);
+    badge.style.display = spHardcore || !pr.unlocked ? 'block' : 'none';
+    badge.textContent = !pr.unlocked ? `🔒 ${pr.done}/${pr.total}` : b ? `Best ${b.frags}` : 'No best yet';
+  }
+  for (const b of $('spDiffs').children) {
+    b.classList.toggle('sel', b.dataset.id === diff);
+    b.disabled = spHardcore;
+  }
+  const d = DIFFICULTIES[diff];
+  const s = spHardcore ? HARDCORE_SETTINGS : spSettings;
+  const count = s.enemies ? (s.enemyCount || d.count) : 0;
+  const mapNote = mapById(spMap).secret ? `🔓 ${mapById(spMap).name} — ${mapById(spMap).desc} ` : '';
+  $('spDiffDesc').textContent = `${mapNote}${d.label}: ${d.desc} (${count ? count + ' enemies at a time' : 'no enemies'})`;
+  // The lock opens once every other map has a hardcore score of 10+
+  if (secretMap) {
+    const pr = unlockProgress(secretMap, bests);
+    const lock = $('btnSecret');
+    lock.textContent = pr.unlocked ? '🔓' : '🔒';
+    lock.classList.toggle('open', pr.unlocked);
+    lock.classList.toggle('sel', spMap === secretMap.id);
+    lock.title = pr.unlocked ? secretMap.name : '???';
+  }
+  const hb = $('btnHardcore');
+  hb.classList.toggle('on', spHardcore);
+  hb.textContent = spHardcore ? '☠ Hardcore: On' : '☠ Hardcore: Off';
+  const best = bests[spMap];
+  $('hcInfo').textContent = spHardcore
+    ? `Hardcore: ${d.label} enemies, fixed settings, one life — your score is your frags. ` +
+      (best ? `Best on ${mapById(spMap).name}: ${best.frags} frags (survived ${fmtTime(best.time)})` : `No best score on ${mapById(spMap).name} yet.`)
+    : '';
+  renderSpSettings(s, !spHardcore);
+  $('btnSpReset').disabled = spHardcore;
+  $('btnSpSettings').textContent = $('spSettingsWrap').style.display === 'none' ? '⚙ Settings' : '⚙ Hide settings';
 }
 
-// ---------- Settings editor ----------
-const settingControls = {};
-for (const f of SETTINGS_SCHEMA) {
-  const row = document.createElement('div');
-  row.className = 'setRow';
-  const label = document.createElement('div');
-  label.textContent = f.label;
-  let ctl;
-  if (f.type === 'select') {
-    ctl = document.createElement('select');
-    for (const [v, t] of f.options) {
-      const o = document.createElement('option');
-      o.value = v; o.textContent = t;
-      ctl.appendChild(o);
-    }
-  } else {
-    ctl = document.createElement('input');
-    ctl.type = f.type === 'toggle' ? 'checkbox' : 'range';
-    if (f.type === 'range') { ctl.min = f.min; ctl.max = f.max; ctl.step = f.step; }
-  }
-  const val = document.createElement('div');
-  val.className = 'val';
-  const ctlWrap = document.createElement('div');
-  ctlWrap.appendChild(ctl);
-  row.append(label, ctlWrap, val);
-  $('settingsBox').appendChild(row);
-  ctl.addEventListener('input', () => {
-    if (net.mode !== 'host') return;
-    lobby.settings[f.key] = f.type === 'toggle' ? ctl.checked : f.type === 'range' ? Number(ctl.value) : ctl.value;
-    lobby.settings = sanitizeSettings(lobby.settings);
-    try { localStorage.setItem('arena3d-settings', JSON.stringify(lobby.settings)); } catch { /* ignore */ }
-    lobbyChanged();
-  });
-  settingControls[f.key] = { f, row, ctl, val };
-}
+// ---------- Settings editors (lobby and singleplayer) ----------
 function fmtSetting(f, v) {
   if (f.fmt) return f.fmt(v);
   if (f.type === 'toggle') return v ? 'On' : 'Off';
   if (f.type === 'select') return '';
   return String(v);
 }
-function renderSettings() {
-  const editable = net.mode === 'host';
-  const s = lobby.settings;
-  for (const { f, row, ctl, val } of Object.values(settingControls)) {
-    const v = s[f.key];
-    if (f.type === 'toggle') ctl.checked = !!v;
-    else if (document.activeElement !== ctl) ctl.value = v;
-    ctl.disabled = !editable;
-    val.textContent = fmtSetting(f, v);
-    row.classList.toggle('off', !!f.dep && !s[f.dep]);
+function makeSettingsEditor(box, schema, onInput) {
+  const controls = [];
+  for (const f of schema) {
+    if (f.type === 'header') {
+      const h = document.createElement('div');
+      h.className = 'setHeader';
+      h.textContent = f.label;
+      box.appendChild(h);
+      continue;
+    }
+    const row = document.createElement('div');
+    row.className = 'setRow';
+    const label = document.createElement('div');
+    label.textContent = f.label;
+    let ctl;
+    if (f.type === 'select') {
+      ctl = document.createElement('select');
+      for (const [v, t] of f.options) {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = t;
+        ctl.appendChild(o);
+      }
+    } else {
+      ctl = document.createElement('input');
+      ctl.type = f.type === 'toggle' ? 'checkbox' : 'range';
+      if (f.type === 'range') { ctl.min = f.min; ctl.max = f.max; ctl.step = f.step; }
+    }
+    const val = document.createElement('div');
+    val.className = 'val';
+    const ctlWrap = document.createElement('div');
+    ctlWrap.appendChild(ctl);
+    row.append(label, ctlWrap, val);
+    box.appendChild(row);
+    ctl.addEventListener('input', () => {
+      onInput(f, f.type === 'toggle' ? ctl.checked : f.type === 'range' ? Number(ctl.value) : ctl.value);
+    });
+    controls.push({ f, row, ctl, val });
   }
+  // Returns a function that shows the given settings
+  return (settings, editable) => {
+    for (const { f, row, ctl, val } of controls) {
+      const v = settings[f.key];
+      if (f.type === 'toggle') ctl.checked = !!v;
+      else if (document.activeElement !== ctl) ctl.value = v;
+      ctl.disabled = !editable;
+      val.textContent = fmtSetting(f, v);
+      row.classList.toggle('off', !!f.dep && !settings[f.dep]);
+    }
+  };
+}
+const renderLobbySettings = makeSettingsEditor($('settingsBox'), SETTINGS_SCHEMA, (f, v) => {
+  if (net.mode !== 'host') return;
+  lobby.settings[f.key] = v;
+  lobby.settings = sanitizeSettings(lobby.settings);
+  try { localStorage.setItem('arena3d-settings', JSON.stringify(lobby.settings)); } catch { /* ignore */ }
+  lobbyChanged();
+});
+function renderSettings() {
+  const editable = net.mode === 'host' && !net.publicN;
+  renderLobbySettings(lobby.settings, editable);
   $('settingsNote').textContent = editable ? '(you are the host)' : '(set by the host)';
 }
+const renderSpSettings = makeSettingsEditor($('spSettingsBox'), SP_SCHEMA, (f, v) => {
+  if (spHardcore) return;
+  spSettings[f.key] = v;
+  spSettings = sanitizeWith(spSettings, SP_SCHEMA, SP_DEFAULTS);
+  try { localStorage.setItem('arena3d-spsettings', JSON.stringify(spSettings)); } catch { /* ignore */ }
+  renderSingle();
+});
 
 // ---------- Lobby ----------
 function myVote() { return lobby.votes[net.myId]; }
+function lobbyMapOpen(id) { return !lobby.unlocked || lobby.unlocked.includes(id); }
 function onLobbyMapClick(id) {
+  if (!lobbyMapOpen(id) || net.publicN) return;
   if (net.mode === 'host') {
     if (lobby.settings.mapMode === 'host') lobby.hostMap = id;
     else lobby.votes[net.myId] = id;
@@ -1942,9 +2423,11 @@ function renderLobby() {
     const sel = voteMode ? myVote() === id : lobby.hostMap === id;
     c.classList.toggle('sel', sel);
     c.classList.toggle('locked', !voteMode && net.mode !== 'host');
+    const open = lobbyMapOpen(id);
+    c.classList.toggle('lockedMap', !open);
     const badge = c.querySelector('.votes');
-    badge.style.display = voteMode ? 'block' : 'none';
-    badge.textContent = `${counts[id] || 0} vote${counts[id] === 1 ? '' : 's'}`;
+    badge.style.display = voteMode || !open ? 'block' : 'none';
+    badge.textContent = !open ? '🔒 Locked' : `${counts[id] || 0} vote${counts[id] === 1 ? '' : 's'}`;
   }
   $('mapModeLabel').textContent = voteMode ? '— click a map to vote' : net.mode === 'host' ? '— click to choose' : '— the host picks';
   const ul = $('lobbyPlayers');
@@ -1956,9 +2439,11 @@ function renderLobby() {
   }).join('') || '<li style="color:#c9b8a6">Connecting…</li>';
   renderSettings();
   const isHost = net.mode === 'host';
-  $('btnStartMatch').style.display = isHost ? '' : 'none';
-  $('btnDefaults').style.display = isHost ? '' : 'none';
-  if (!isHost) {
+  $('btnStartMatch').style.display = isHost && !net.publicN ? '' : 'none';
+  $('btnDefaults').style.display = isHost && !net.publicN ? '' : 'none';
+  if (net.publicN) {
+    $('lobbyStatus').textContent = `${publicServer(net.publicN).name} — the next match starts in a few seconds…`;
+  } else if (!isHost) {
     $('lobbyStatus').textContent = !net.connected ? $('lobbyStatus').textContent
       : lobby.inMatch ? 'A match is running — joining…' : 'Waiting for the host to start the match…';
   } else {
@@ -1973,17 +2458,121 @@ function renderPause() {
   const solo = net.mode === 'solo';
   $('pauseTitle').textContent = match.active ? 'Paused' : 'Menu';
   $('btnRestart').style.display = solo && match.active ? '' : 'none';
-  $('btnToLobby').style.display = net.mode === 'host' && match.active ? '' : 'none';
+  $('btnToLobby').style.display = net.mode === 'host' && match.active && !net.publicN ? '' : 'none';
+  $('btnQuit').textContent = net.publicN ? 'Leave server' : 'Quit to main menu';
   $('btnResume').style.display = match.active ? '' : 'none';
   const m = mapById(match.mapId);
   $('pauseInfo').textContent = solo
     ? `${m.name} · ${DIFFICULTIES[match.difficulty].label}`
-    : `${m.name} · Room ${net.code}${net.mode === 'host' ? ' (you are the host)' : ''} — the match keeps running while you are in this menu`;
+    : `${m.name} · ${net.publicN ? publicServer(net.publicN).name : 'Room ' + net.code}${net.mode === 'host' ? ' (you are the host)' : ''} — the match keeps running while you are in this menu`;
 }
+
+// ---------- Home screen, public servers, victory ----------
+function renderMain() {
+  let beaten = false;
+  try { beaten = localStorage.getItem('arena3d-beaten') === '1'; } catch { /* ignore */ }
+  $('beatenBadge').style.display = beaten ? 'block' : 'none';
+}
+const serverInfo = {};
+function renderServers(probe = false) {
+  const list = $('serverList');
+  list.innerHTML = '';
+  for (const sv of PUBLIC_SERVERS) {
+    const row = document.createElement('div');
+    row.className = 'serverRow';
+    const info = serverInfo[sv.n];
+    const st = info === undefined ? 'Checking…'
+      : info === null ? 'Nobody here yet — join to open it'
+      : `${info.players}/${info.max} players${info.map ? ' · playing ' + info.map : ''}`;
+    row.innerHTML = `<div><div class="nm">${escapeHtml(sv.name)}</div><div class="ds">${escapeHtml(sv.desc)}</div><div class="st">${escapeHtml(st)}</div></div>`;
+    const btn = document.createElement('button');
+    btn.className = 'primary';
+    btn.textContent = 'Join';
+    btn.addEventListener('click', () => {
+      readName();
+      Sound.init();
+      $('serverStatus').textContent = `Connecting to ${sv.name}…`;
+      startPublic(sv.n);
+    });
+    row.appendChild(btn);
+    list.appendChild(row);
+  }
+  if (probe) {
+    for (const sv of PUBLIC_SERVERS) {
+      delete serverInfo[sv.n];
+      probeServer(sv.n, (info) => {
+        serverInfo[sv.n] = info;
+        if (currentScreen === 'Servers') renderServers(false);
+      });
+    }
+  }
+}
+$('btnServers').addEventListener('click', () => { readName(); showScreen('Servers'); });
+$('btnServersBack').addEventListener('click', () => showScreen('Main'));
+$('btnServersRefresh').addEventListener('click', () => renderServers(true));
+$('btnVictoryContinue').addEventListener('click', () => {
+  $('victory').style.display = 'none';
+  match.inVictory = false;
+  lockPointer();
+});
+$('btnVictoryMenu').addEventListener('click', () => {
+  $('victory').style.display = 'none';
+  match.inVictory = false;
+  quitToMenu();
+});
 
 // ---------- Buttons ----------
 $('btnSingle').addEventListener('click', () => { readName(); Sound.init(); showScreen('Single'); });
 $('btnSpBack').addEventListener('click', () => showScreen('Main'));
+$('btnSecret').addEventListener('click', () => {
+  const secretMap = MAPS.find((m) => m.secret);
+  const pr = unlockProgress(secretMap);
+  const lock = $('btnSecret');
+  if (!pr.unlocked) {
+    lock.classList.remove('shake');
+    void lock.offsetWidth;
+    lock.classList.add('shake');
+    Sound.play('empty');
+    $('spDiffDesc').textContent = `It's sealed… Score ${secretMap.unlock.need}+ in Hardcore on every map to break the seal (${pr.done}/${pr.total}).`;
+    return;
+  }
+  spMap = secretMap.id;
+  try { localStorage.setItem('arena3d-spmap', spMap); } catch { /* ignore */ }
+  Sound.play('teleport');
+  renderSingle();
+});
+let resetArmed = 0;
+$('btnResetScores').addEventListener('click', () => {
+  const now = performance.now();
+  if (now > resetArmed) {
+    resetArmed = now + 4000;
+    $('btnResetScores').textContent = 'Click again to delete all high scores';
+    setTimeout(() => { if (performance.now() > resetArmed) $('btnResetScores').textContent = 'Reset all high scores'; }, 4100);
+    return;
+  }
+  resetArmed = 0;
+  try { localStorage.removeItem('arena3d-hc-best'); } catch { /* ignore */ }
+  $('btnResetScores').textContent = 'Reset all high scores';
+  $('mainStatus').textContent = 'All high scores deleted — locked maps are sealed again.';
+});
+$('btnSpSettings').addEventListener('click', () => {
+  const w = $('spSettingsWrap');
+  w.style.display = w.style.display === 'none' ? 'block' : 'none';
+  renderSingle();
+});
+$('btnHardcore').addEventListener('click', () => {
+  spHardcore = !spHardcore;
+  try { localStorage.setItem('arena3d-hardcore', spHardcore ? '1' : '0'); } catch { /* ignore */ }
+  renderSingle();
+});
+$('btnSpReset').addEventListener('click', () => {
+  if (spHardcore) return;
+  spSettings = { ...SP_DEFAULTS };
+  try { localStorage.removeItem('arena3d-spsettings'); } catch { /* ignore */ }
+  renderSingle();
+});
+$('btnRetry').addEventListener('click', (e) => { e.stopPropagation(); startSolo(); lockPointer(); });
+$('btnDeathMenu').addEventListener('click', (e) => { e.stopPropagation(); quitToMenu(); });
 $('btnSpStart').addEventListener('click', () => { startSolo(); lockPointer(); });
 $('btnHost').addEventListener('click', () => { readName(); Sound.init(); startHost(); showScreen('Lobby'); });
 $('btnJoin').addEventListener('click', () => {
@@ -2000,7 +2589,7 @@ $('btnCopy').addEventListener('click', () => {
   if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => { $('lobbyStatus').textContent = 'Invite link copied'; }, () => { $('lobbyStatus').textContent = link; });
   else $('lobbyStatus').textContent = link;
 });
-$('btnLeave').addEventListener('click', () => { leaveNetwork(); showScreen('Main'); });
+$('btnLeave').addEventListener('click', () => { const pub = net.publicN; leaveNetwork(); showScreen(pub ? 'Servers' : 'Main'); });
 $('btnDefaults').addEventListener('click', () => {
   if (net.mode !== 'host') return;
   lobby.settings = { ...DEFAULT_SETTINGS };
@@ -2022,19 +2611,109 @@ deathScreen.addEventListener('click', () => tryRespawn());
   }
 }
 
+// ---------- Key bindings ----------
+const ACTIONS = [
+  ['forward', 'Move forward', 'KeyW'], ['back', 'Move back', 'KeyS'], ['left', 'Move left', 'KeyA'], ['right', 'Move right', 'KeyD'],
+  ['jump', 'Jump', 'Space'], ['sprint', 'Sprint', 'ShiftLeft'], ['fire', 'Shoot (extra key)', ''],
+  ['view', 'Switch first / third person', 'KeyV'], ['lastWeapon', 'Last weapon', 'KeyQ'], ['scoreboard', 'Scoreboard (hold)', 'Tab'],
+  ['w1', 'Blaster', 'Digit1'], ['w2', 'Shotgun', 'Digit2'], ['w3', 'Machinegun', 'Digit3'],
+  ['w4', 'Rocket Launcher', 'Digit4'], ['w5', 'Railgun', 'Digit5'], ['w6', 'Grenade Launcher', 'Digit6'],
+];
+const DEFAULT_BINDS = Object.fromEntries(ACTIONS.map(([a, , k]) => [a, k]));
+let binds = { ...DEFAULT_BINDS };
+try {
+  const saved = JSON.parse(localStorage.getItem('arena3d-keys') || 'null');
+  if (saved) for (const a of Object.keys(DEFAULT_BINDS)) if (typeof saved[a] === 'string') binds[a] = saved[a];
+} catch { /* ignore */ }
+let captureAction = null;
+// Arrow keys always move, and right shift also sprints when left shift is bound
+const KEY_ALIASES = { forward: 'ArrowUp', back: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+function isDown(action) {
+  if (binds[action] && keys.has(binds[action])) return true;
+  if (KEY_ALIASES[action] && keys.has(KEY_ALIASES[action])) return true;
+  return action === 'sprint' && binds.sprint === 'ShiftLeft' && keys.has('ShiftRight');
+}
+function keyName(code) {
+  if (!code) return '—';
+  const special = {
+    Space: 'Space', ShiftLeft: 'Left Shift', ShiftRight: 'Right Shift', ControlLeft: 'Left Ctrl', ControlRight: 'Right Ctrl',
+    AltLeft: 'Left Alt', AltRight: 'Right Alt', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+    Tab: 'Tab', Enter: 'Enter', Backspace: 'Backspace', CapsLock: 'Caps Lock', Backquote: '`', Minus: '-', Equal: '=',
+    BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', Backslash: '\\',
+  };
+  if (special[code]) return special[code];
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  if (code.startsWith('Numpad')) return 'Num ' + code.slice(6);
+  return code;
+}
+function saveBinds() {
+  try { localStorage.setItem('arena3d-keys', JSON.stringify(binds)); } catch { /* ignore */ }
+}
+function renderKeys() {
+  const list = $('keyList');
+  list.innerHTML = '';
+  for (const [a, label] of ACTIONS) {
+    const row = document.createElement('div');
+    row.className = 'keyRow';
+    const l = document.createElement('div');
+    l.textContent = label;
+    const btn = document.createElement('button');
+    btn.className = 'keyBtn' + (captureAction === a ? ' wait' : '');
+    btn.textContent = captureAction === a ? 'Press a key…' : keyName(binds[a]);
+    btn.addEventListener('click', () => { captureAction = captureAction === a ? null : a; renderKeys(); });
+    row.append(l, btn);
+    list.appendChild(row);
+  }
+  renderControlsHelp();
+}
+function renderControlsHelp() {
+  const k = (a) => `<kbd>${escapeHtml(keyName(binds[a]))}</kbd>`;
+  $('controlsHelp').innerHTML = [
+    [`${k('forward')} ${k('left')} ${k('back')} ${k('right')}`, 'Move'],
+    ['<kbd>Mouse</kbd>', 'Look / aim'],
+    [`<kbd>Left click</kbd>${binds.fire ? ' / ' + k('fire') : ''}`, 'Shoot (hold for auto fire)'],
+    [k('sprint'), 'Sprint (uses stamina)'],
+    [k('jump'), 'Jump'],
+    [`${k('w1')}–${k('w6')} / <kbd>Wheel</kbd> / ${k('lastWeapon')}`, 'Choose weapon / cycle / last weapon'],
+    [k('view'), 'Switch first / third person'],
+    [k('scoreboard'), 'Scoreboard (hold)'],
+    ['<kbd>Esc</kbd>', 'Pause menu'],
+  ].map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
+}
+function assignKey(action, code) {
+  // A key can only do one thing: the action that had it gets this action's old key
+  const old = binds[action];
+  for (const a of Object.keys(binds)) if (a !== action && binds[a] === code) binds[a] = old;
+  binds[action] = code;
+  saveBinds();
+}
+$('btnKeys').addEventListener('click', () => { captureAction = null; showScreen('Keys'); });
+$('btnKeysBack').addEventListener('click', () => { captureAction = null; showScreen(match.active ? 'Pause' : 'Main'); });
+$('btnKeysReset').addEventListener('click', () => { binds = { ...DEFAULT_BINDS }; saveBinds(); captureAction = null; renderKeys(); });
+renderControlsHelp();
+
 // ---------- Keyboard and mouse ----------
+const WEAPON_ACTIONS = ['w1', 'w2', 'w3', 'w4', 'w5', 'w6'];
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Tab') {
+  if (captureAction) {
+    e.preventDefault();
+    if (e.code !== 'Escape') assignKey(captureAction, e.code);
+    captureAction = null;
+    renderKeys();
+    return;
+  }
+  if (e.code === binds.scoreboard && !isTyping()) {
     e.preventDefault();
     if (match.active) scoreboardEl.style.display = 'block';
-    return;
+    if (!playing) return;
   }
   if (e.code === 'Escape' && playing && document.pointerLockElement) {
     // Browsers normally release the pointer on Esc themselves; this covers the rest
     document.exitPointerLock();
     return;
   }
-  if (e.code === 'Escape' && dragLook && playing) {
+  if (e.code === 'Escape' && dragLook && playing && !match.over && !match.inVictory) {
     playing = false;
     firing = false;
     keys.clear();
@@ -2042,18 +2721,20 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (!playing || isTyping()) return;
-  if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+  if (e.code === 'Space' || e.code === 'Tab' || e.code.startsWith('Arrow') || Object.values(binds).includes(e.code)) e.preventDefault();
   keys.add(e.code);
   if (e.repeat) return;
-  if (e.code === 'Space') player.jumpBuffer = 0.12;
-  if (e.code === 'KeyV') toggleView();
-  if (e.code === 'KeyQ') selectWeapon(state.lastWeapon);
-  const m = /^Digit([1-5])$/.exec(e.code);
-  if (m) selectWeapon(ORDER[Number(m[1]) - 1]);
+  if (e.code === binds.jump) player.jumpBuffer = 0.12;
+  if (e.code === binds.view) toggleView();
+  if (e.code === binds.lastWeapon) selectWeapon(state.lastWeapon);
+  if (binds.fire && e.code === binds.fire) { if (state.alive) firing = true; else tryRespawn(); }
+  const wi = WEAPON_ACTIONS.findIndex((a) => binds[a] === e.code);
+  if (wi >= 0) selectWeapon(ORDER[wi]);
 });
 window.addEventListener('keyup', (e) => {
   keys.delete(e.code);
-  if (e.code === 'Tab') scoreboardEl.style.display = 'none';
+  if (e.code === binds.scoreboard) scoreboardEl.style.display = 'none';
+  if (binds.fire && e.code === binds.fire) firing = false;
 });
 window.addEventListener('blur', () => {
   keys.clear();
@@ -2071,8 +2752,8 @@ document.addEventListener('pointerlockchange', () => {
     playing = false;
     firing = false;
     keys.clear();
-    if (match.active && currentScreen !== 'Lobby' && currentScreen !== 'Main') showScreen('Pause');
-    else if (match.active) showScreen('Pause');
+    // Game over and victory screens stay instead of the pause menu
+    if (match.active && !match.over && !match.inVictory) showScreen('Pause');
   }
 });
 document.addEventListener('pointerlockerror', startDragMode);
@@ -2167,8 +2848,14 @@ function updateHud() {
   setText('deaths', `${state.deaths} death${state.deaths === 1 ? '' : 's'}${others}`);
   const limits = [];
   if (net.mode !== 'solo' && s.fragLimit) limits.push(`first to ${s.fragLimit}`);
-  setText('timer', net.mode !== 'solo' && s.timeLimit ? fmtTime(match.timeLeft) : '');
-  setText('matchInfo', `${mapById(match.mapId).name} · ${net.mode === 'solo' ? DIFFICULTIES[match.difficulty].label : 'Room ' + net.code}${limits.length ? ' · ' + limits.join(', ') : ''}`);
+  if (match.hardcore) {
+    const best = loadBests()[match.mapId];
+    setText('timer', `☠ ${fmtTime(match.survived)}`);
+    setText('matchInfo', `${mapById(match.mapId).name} · HARDCORE · best ${best ? best.frags : 0} frags`);
+  } else {
+    setText('timer', net.mode !== 'solo' && s.timeLimit ? fmtTime(match.timeLeft) : '');
+    setText('matchInfo', `${mapById(match.mapId).name} · ${net.mode === 'solo' ? DIFFICULTIES[match.difficulty].label : 'Room ' + net.code}${limits.length ? ' · ' + limits.join(', ') : ''}`);
+  }
   setText('speed', `${Math.hypot(player.vel.x, player.vel.z).toFixed(1)} m/s${state.sprinting ? ' · sprinting' : ''}`);
   for (const id of ORDER) {
     const d = slotEls[id], wd = WEAPONS[id];
@@ -2184,7 +2871,7 @@ function updateHud() {
   st.style.width = (state.stamina / CFG.staminaMax * 100).toFixed(1) + '%';
   st.classList.toggle('exhausted', state.exhausted);
   crosshair.classList.toggle('hit', state.hitMarkT > 0);
-  if (!state.alive) {
+  if (!state.alive && !match.hardcore) {
     const wait = respawnWait();
     const hint = wait > 0 ? `Respawn in ${Math.ceil(wait)}…` : 'Click to respawn';
     if ($('deathHint').textContent !== hint) $('deathHint').textContent = hint;
@@ -2342,7 +3029,7 @@ function tryFire() {
     return;
   }
   if (w.ammo && !s.infiniteAmmo) state.ammo[w.ammo] -= w.cost;
-  state.fireCd = w.cooldown;
+  state.fireCd = w.cooldown / s.fireRate;
   computeAim();
   getMuzzleWorld(muzzlePos);
   const mul = s.dmgMul;
@@ -2359,10 +3046,14 @@ function tryFire() {
     state.shake = Math.max(state.shake, id === 'shotgun' ? 0.12 : 0.03);
     netSend({ t: 'fx', id: net.myId, k: 'hs', w: id, o: v3a(muzzlePos), e: ends });
   } else if (w.type === 'proj') {
+    // Lobbed weapons are aimed a little higher
+    if (w.lift) { shotDir.y += w.lift; shotDir.normalize(); }
     spawnProjectile({
-      origin: shotOrigin, dir: shotDir, speed: w.speed, owner: 'player', ownerId: net.myId, weapon: id,
-      dmg: w.dmg * mul, splash: (w.splash || 0) * mul, radius: w.radius || 0, knock: w.knock || 0, color: w.color,
-      kind: id === 'rocket' ? 'rocket' : 'bolt', visualFrom: muzzlePos,
+      origin: shotOrigin, dir: shotDir, speed: w.speed * s.projSpeed * (id === 'grenade' ? s.grenadePower : 1), owner: 'player', ownerId: net.myId, weapon: id,
+      dmg: w.dmg * mul, splash: (w.splash || 0) * mul, radius: w.radius || 0,
+      knock: (w.knock || 0) * (id === 'rocket' ? s.rocketKnock : 1), color: w.color,
+      kind: projKind(id), visualFrom: muzzlePos,
+      gravity: w.gravity ? phys.gravity * w.gravity : 0, bounce: w.bounce || 0, fuse: w.fuse,
     });
     netSend({ t: 'fx', id: net.myId, k: 'pj', w: id, o: v3a(muzzlePos), s: v3a(shotOrigin), d: [r3(shotDir.x), r3(shotDir.y), r3(shotDir.z)] });
   } else if (w.type === 'rail') {
@@ -2392,6 +3083,7 @@ function projMat(color) {
   return projMats.get(color);
 }
 
+function projKind(id) { return id === 'rocket' ? 'rocket' : id === 'grenade' ? 'grenade' : 'bolt'; }
 function spawnProjectile(o) {
   const dir = o.dir.clone().normalize();
   // Do not spawn inside a wall right in front of the shooter
@@ -2400,9 +3092,10 @@ function spawnProjectile(o) {
     pos: o.origin.clone().addScaledVector(dir, pre ? Math.max(0, pre.dist - 0.05) : 0.7),
     vel: dir.clone().multiplyScalar(o.speed),
     owner: o.owner, ownerId: o.ownerId, weapon: o.weapon, dmg: o.dmg, splash: o.splash, radius: o.radius, knock: o.knock,
-    kind: o.kind, life: 4, mesh: null, glow: null, visualOffset: new V3(),
+    kind: o.kind, life: o.fuse || (o.gravity ? 6 : 4), gravity: o.gravity || 0, bounce: o.bounce || 0, resting: false,
+    mesh: null, glow: null, visualOffset: new V3(),
   };
-  const size = p.kind === 'rocket' ? 0.14 : 0.1;
+  const size = p.kind === 'rocket' ? 0.14 : p.kind === 'grenade' ? 0.13 : 0.1;
   p.mesh = new THREE.Mesh(projGeo, projMat(o.color));
   p.mesh.scale.setScalar(size);
   p.glow = new THREE.Mesh(discGeo, glowMat(o.color, 0.9));
@@ -2412,7 +3105,7 @@ function spawnProjectile(o) {
   p.mesh.position.copy(p.pos).add(p.visualOffset);
   scene.add(p.mesh);
   projectiles.push(p);
-  if (pre) {
+  if (pre && !p.bounce) {
     impactProjectile(p, 'world', null, pre.normal);
     removeProjectile(projectiles.length - 1);
   }
@@ -2434,6 +3127,7 @@ function impactProjectile(p, type, target, normal) {
     if (p.splash > 0) { explode(at, p.splash, p.radius, 'player', p.knock, p.weapon); return; }
     sparks(p.pos, n, target ? 0x9a1a1a : 0x88eeff, target ? 5 : 8, target ? 4 : 5);
   } else if (p.owner === 'enemy') {
+    if (p.splash > 0) { enemyExplode(at, p.splash, p.radius, p.weapon); return; }
     if (type === 'player') damagePlayer(p.dmg, dir, 2, ENEMY_ID, p.weapon);
     else if (type === 'remote') enemyHitRemote(target.r, p.dmg, dir, 2, p.weapon);
     sparks(p.pos, n, 0xffaa55, 8);
@@ -2449,7 +3143,16 @@ function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
     p.life -= dt;
-    const speed = p.vel.length();
+    if (p.resting) {
+      // A grenade lying on the ground just waits for its fuse
+      if (p.life <= 0) {
+        if (p.splash > 0) explode(p.pos.clone().setY(p.pos.y + 0.15), p.splash, p.radius, p.owner, p.knock, p.weapon);
+        removeProjectile(i);
+      }
+      continue;
+    }
+    if (p.gravity) p.vel.y -= p.gravity * dt;
+    const speed = Math.max(1e-4, p.vel.length());
     const step = speed * dt;
     _pdir.copy(p.vel).divideScalar(speed);
     let hitDist = step, hitType = null, hitTarget = null, hitNormal = null;
@@ -2472,17 +3175,32 @@ function updateProjectiles(dt) {
       }
     }
     p.pos.addScaledVector(_pdir, hitDist);
+    if (hitType === 'world' && p.bounce) {
+      // Bounce off walls and floors, losing energy
+      const vn = p.vel.dot(hitNormal);
+      p.vel.addScaledVector(hitNormal, -2 * vn).multiplyScalar(p.bounce);
+      p.pos.addScaledVector(hitNormal, 0.04);
+      if (Math.abs(vn) > 3) soundAt('bounce', p.pos);
+      if (hitNormal.y > 0.7 && p.vel.length() < 1.5) { p.vel.set(0, 0, 0); p.resting = true; }
+      hitType = null;
+    }
     if (hitType) {
       impactProjectile(p, hitType, hitTarget, hitNormal);
       removeProjectile(i);
       continue;
     }
     if (p.life <= 0) {
-      if (p.splash > 0) explode(p.pos.clone(), p.splash, p.radius, p.owner, p.knock, p.weapon);
+      if (p.splash > 0) {
+        if (p.owner === 'enemy') enemyExplode(p.pos.clone(), p.splash, p.radius, p.weapon);
+        else explode(p.pos.clone(), p.splash, p.radius, p.owner, p.knock, p.weapon);
+      }
       removeProjectile(i);
       continue;
     }
     p.visualOffset.multiplyScalar(Math.max(0, 1 - dt * 12));
+    if (p.kind === 'grenade' && Math.random() < 0.3) {
+      particle(p.pos.x, p.pos.y, p.pos.z, 0, 0.4, 0, pick([0x666666, 0x9cff4a]), rnd(0.06, 0.12), rnd(0.3, 0.5), -0.05, 1.5);
+    }
     if (p.kind === 'rocket' && Math.random() < 0.6) {
       particle(p.pos.x, p.pos.y, p.pos.z, rnd(-0.3, 0.3), rnd(0.2, 0.8), rnd(-0.3, 0.3),
         pick([0x555555, 0x777777, 0xff9944]), rnd(0.12, 0.25), rnd(0.4, 0.8), -0.05, 1.5);
@@ -2542,6 +3260,7 @@ function damagePlayer(amount, dir, knock = 0, attacker = null, weapon = null) {
   }
   if (attacker !== null && attacker !== net.myId && amount > 0) net.lastAttacker = { id: attacker, w: weapon, t: performance.now() };
   if (state.invuln > 0 || amount <= 0) return;
+  state.lastHurt = state.time;
   const save = Math.min(state.armor, Math.ceil(amount * 0.66));
   state.armor -= save;
   state.health -= amount - save;
@@ -2569,12 +3288,70 @@ function killPlayer(attacker, weapon) {
   $('deathTitle').textContent = killer === net.myId ? 'You died'
     : killer === ENEMY_ID ? `Killed by a ${ENEMY_TYPES[w] ? ENEMY_TYPES[w].name : 'monster'}` : `Fragged by ${nameOf(killer)}`;
   $('deathInfo').textContent = `Frags: ${state.frags} · Deaths: ${state.deaths}`;
+  $('deathHint').textContent = 'Click to respawn';
+  $('deathBest').textContent = '';
+  $('deathButtons').style.display = 'none';
+  deathScreen.style.cursor = 'pointer';
+  if (match.hardcore) hardcoreGameOver();
   deathScreen.style.display = 'flex';
+}
+// Victory: enough frags in hardcore on the secret map. The run can continue afterwards.
+function checkVictory() {
+  if (!match.hardcore || match.victoryShown || !state.alive || !currentMap.secret || state.frags < VICTORY_FRAGS) return;
+  match.victoryShown = true;
+  match.inVictory = true;
+  saveBest(match.mapId, state.frags, match.survived);
+  try { localStorage.setItem('arena3d-beaten', '1'); } catch { /* ignore */ }
+  firing = false;
+  keys.clear();
+  $('victoryInfo').textContent = `${state.frags} frags on ${currentMap.name} · survived ${fmtTime(match.survived)}`;
+  $('victory').style.display = 'flex';
+  Sound.play('pickupMega');
+  Sound.play('frag');
+  if (document.pointerLockElement) document.exitPointerLock();
+  if (dragLook) { playing = false; }
+}
+// One life in hardcore: show the score, save a new best and offer a retry
+function hardcoreGameOver() {
+  match.over = true;
+  const frags = state.frags, time = match.survived;
+  const lockedBefore = MAPS.filter((m) => !isMapUnlocked(m.id)).map((m) => m.id);
+  const { better, old } = saveBest(match.mapId, frags, time);
+  const opened = lockedBefore.filter((id) => isMapUnlocked(id)).map(mapById);
+  const newlyOpen = opened.filter((m) => !m.secret).map((m) => m.name);
+  const secretOpened = opened.some((m) => m.secret);
+  $('deathTitle').textContent = 'Game over';
+  $('deathInfo').textContent = `Score: ${frags} frag${frags === 1 ? '' : 's'} · Survived ${fmtTime(time)} · ${mapById(match.mapId).name}`;
+  $('deathHint').textContent = '';
+  const best = $('deathBest');
+  best.classList.toggle('newBest', better);
+  best.textContent = better
+    ? (old ? `NEW BEST! (previous: ${old.frags} frags)` : 'NEW BEST!')
+    : `Best: ${old.frags} frags (survived ${fmtTime(old.time)})`;
+  if (newlyOpen.length) {
+    best.textContent += ` — NEW MAP UNLOCKED: ${newlyOpen.join(', ')}!`;
+    best.classList.add('newBest');
+    Sound.play('pickupMega');
+  }
+  if (secretOpened) {
+    best.textContent += ' — 🔓 THE SEALED LOCK HAS OPENED…';
+    best.classList.add('newBest');
+    Sound.play('teleport');
+  }
+  $('deathButtons').style.display = 'flex';
+  deathScreen.style.cursor = 'default';
+  // Free the mouse after a moment so the buttons can be clicked
+  setTimeout(() => {
+    if (!match.over) return;
+    if (document.pointerLockElement) document.exitPointerLock();
+    if (dragLook) { dragLook = false; playing = false; }
+  }, 1200);
 }
 function respawnWait() {
   return Math.max(0.6, match.settings.respawnDelay) - state.deathT;
 }
 function tryRespawn() {
+  if (match.hardcore) return;
   if (!state.alive && match.active && respawnWait() <= 0) respawnPlayer();
 }
 function respawnPlayer(quiet = false) {
@@ -2598,7 +3375,7 @@ function respawnPlayer(quiet = false) {
   player.pitch = -0.1;
   const all = s.startWeapons === 'all';
   const weapons = { blaster: true };
-  const ammo = { shells: 0, bullets: 0, rockets: 0, slugs: 0 };
+  const ammo = emptyAmmo();
   if (all) {
     for (const id of ORDER) {
       weapons[id] = true;
@@ -2607,7 +3384,7 @@ function respawnPlayer(quiet = false) {
     }
   }
   Object.assign(state, {
-    alive: true, health: s.maxHealth, armor: s.startArmor, weapons, ammo,
+    alive: true, health: s.maxHealth, armor: Math.min(s.startArmor, s.maxArmor), weapons, ammo, lastHurt: -99,
     weapon: all ? 'shotgun' : 'blaster', lastWeapon: 'blaster', fireCd: 0.3, switchT: SWITCH_TIME,
     invuln: 1.5, stamina: CFG.staminaMax, deathT: 0,
   });
@@ -2690,29 +3467,35 @@ function updatePlayer(dt) {
     return;
   }
 
-  // Health above the maximum slowly decays
-  if (state.health > match.settings.maxHealth) {
+  // Health above the maximum slowly decays; optional regeneration 3 s after the last hit
+  const ms = match.settings;
+  if (state.health > ms.maxHealth) {
     state.decayT += dt;
     if (state.decayT >= 1) { state.decayT = 0; state.health -= 1; }
+  } else if (ms.healthRegen > 0 && state.time - (state.lastHurt || -99) > 3) {
+    state.health = Math.min(ms.maxHealth, state.health + ms.healthRegen * dt);
   }
 
   const yaw = player.yaw;
   let ix = 0, iz = 0;
-  if (keys.has('KeyW') || keys.has('ArrowUp')) iz += 1;
-  if (keys.has('KeyS') || keys.has('ArrowDown')) iz -= 1;
-  if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
-  if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1;
+  if (isDown('forward')) iz += 1;
+  if (isDown('back')) iz -= 1;
+  if (isDown('right')) ix += 1;
+  if (isDown('left')) ix -= 1;
   const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
   const rx = Math.cos(yaw), rz = -Math.sin(yaw);
   wish.set(fx * iz + rx * ix, 0, fz * iz + rz * ix);
   const moving = wish.lengthSq() > 0;
   if (moving) wish.normalize();
 
-  const wantSprint = keys.has('ShiftLeft') || keys.has('ShiftRight');
+  const wantSprint = isDown('sprint');
   if (state.stamina <= 0) state.exhausted = true;
   if (state.exhausted && state.stamina >= CFG.staminaMinToSprint) state.exhausted = false;
   state.sprinting = wantSprint && moving && !state.exhausted;
-  state.stamina = clamp(state.stamina + (state.sprinting ? -CFG.staminaDrain : CFG.staminaRegen) * dt, 0, CFG.staminaMax);
+  // Stamina speed scales both how fast sprinting drains it and how fast it refills
+  const rate = ms.staminaRate || 1;
+  const drain = ms.infiniteStamina ? 0 : CFG.staminaDrain * rate;
+  state.stamina = clamp(state.stamina + (state.sprinting ? -drain : CFG.staminaRegen * rate) * dt, 0, CFG.staminaMax);
 
   // Ground: full control. Air: steer only while keys are held, keep momentum.
   const speed = state.sprinting ? phys.sprint : phys.walk;
@@ -2722,7 +3505,7 @@ function updatePlayer(dt) {
     let dvx = wish.x * sp - player.vel.x;
     let dvz = wish.z * sp - player.vel.z;
     const dl = Math.hypot(dvx, dvz);
-    const maxDv = (player.onGround ? CFG.accelGround : CFG.accelAir) * dt;
+    const maxDv = (player.onGround ? CFG.accelGround : phys.airAccel) * dt;
     if (dl > maxDv) { dvx *= maxDv / dl; dvz *= maxDv / dl; }
     player.vel.x += dvx;
     player.vel.z += dvz;
@@ -2731,7 +3514,7 @@ function updatePlayer(dt) {
   player.coyote = player.onGround ? 0.1 : player.coyote - dt;
   player.jumpBuffer -= dt;
   if (player.jumpBuffer > 0 && player.coyote > 0) {
-    player.vel.y = CFG.jumpSpeed;
+    player.vel.y = phys.jump;
     player.jumpBuffer = 0;
     player.coyote = 0;
     player.onGround = false;
@@ -2739,7 +3522,12 @@ function updatePlayer(dt) {
   }
 
   player.vel.y -= phys.gravity * dt;
+  const wasAir = !player.onGround, fallSpeed = -player.vel.y;
   moveBody(player, dt);
+  // Optional fall damage for hard landings
+  if (ms.fallDamage && wasAir && player.onGround && fallSpeed > 17) {
+    damagePlayer(Math.round((fallSpeed - 17) * 3), null, 0, null, 'fall');
+  }
   applyZones(player, dt, true, () => { damagePlayer(20, null, 0, null, 'lava'); Sound.play('lava'); });
 
   state.fireCd -= dt;
@@ -2756,18 +3544,40 @@ const enemies = [];
 const pendingEnemyHits = new Map();
 let enemyCfg = null;
 
-function makeEnemyCfg(diffKey, count, respawn, types) {
+// s = match settings (enemy multipliers)
+function makeEnemyCfg(diffKey, count, respawn, types, s = DEFAULT_SETTINGS) {
   const d = DIFFICULTIES[diffKey] || DIFFICULTIES.medium;
   return {
-    count: count ?? d.count, respawn: respawn ?? d.respawn, types: types || 'mixed',
-    hp: d.hp, dmg: d.dmg, speed: d.speed, fire: d.fire, spread: d.spread, brute: d.brute, sight: d.sight, proj: d.proj,
+    count: count ?? d.count, respawn: respawn ?? d.respawn, types: types || 'all',
+    hp: d.hp * (s.enemyHealth ?? 1), dmg: d.dmg * (s.enemyDamage ?? 1), speed: d.speed * (s.enemySpeed ?? 1),
+    fire: d.fire, spread: d.spread, brute: d.brute, sight: d.sight, proj: d.proj,
   };
 }
+// Relative weights of the monster types for each "Enemy types" choice
+const ROSTER_MIXES = {
+  all: { grunt: 0.34, brute: 0.18, imp: 0.2, boomer: 0.16, mortar: 0.12 },
+  classic: { grunt: 0.7, brute: 0.3 },
+  new: { imp: 0.4, boomer: 0.35, mortar: 0.25 },
+  grunts: { grunt: 1 }, brutes: { brute: 1 }, imps: { imp: 1 }, boomers: { boomer: 1 }, mortars: { mortar: 1 },
+};
 function buildRoster(cfg) {
   const n = cfg.count;
-  const brutes = cfg.types === 'brutes' ? n : cfg.types === 'grunts' ? 0 : Math.round(n * cfg.brute);
+  const mix = { ...(ROSTER_MIXES[cfg.types] || ROSTER_MIXES.all) };
+  // Harder difficulties bring more brutes into the classic mixes
+  if (mix.grunt && mix.brute) {
+    const total = mix.grunt + mix.brute;
+    mix.brute = total * cfg.brute;
+    mix.grunt = total - mix.brute;
+  }
+  const types = Object.keys(mix).filter((t) => ENEMY_TYPES[t] && mix[t] > 0);
+  const sum = types.reduce((a, t) => a + mix[t], 0);
+  // Largest-remainder rounding so the counts add up to n
+  const exact = types.map((t) => (mix[t] / sum) * n);
+  const counts = exact.map(Math.floor);
+  let left = n - counts.reduce((a, c) => a + c, 0);
+  exact.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { counts[i]++; left--; } });
   const list = [];
-  for (let i = 0; i < n; i++) list.push(i < n - brutes ? 'grunt' : 'brute');
+  types.forEach((t, i) => { for (let k = 0; k < counts[i]; k++) list.push(t); });
   return list;
 }
 function isAuthority() { return net.mode !== 'client'; }
@@ -2786,14 +3596,15 @@ function createEnemy(type, idx) {
   const model = buildHumanoid(def.look);
   model.root.scale.set(...def.scale);
   model.root.visible = false;
-  if (def.ranged) attachGun(model.armR, buildWeaponModel('blaster'));
+  if (def.ranged && !def.lob && !def.fly) attachGun(model.armR, buildWeaponModel('blaster'));
+  if (def.decorate) def.decorate(model);
   const e = {
     idx, type, def, model, alive: false, hp: def.hp,
     body: { pos: new V3(0, -50, 0), vel: new V3(), radius: def.radius, height: def.height, onGround: false, padCd: 0, lavaT: 0, owner: null },
     respawn: rnd(1, 4), facing: 0, think: 0, los: false, alert: false, tgt: null,
     lastSeen: new V3(), wander: new V3(), wanderT: 0, fireT: rnd(1, 2), meleeT: 0,
     strafeDir: 1, strafeT: 0, stun: 0, flash: 0, stuckT: 0, stuckCount: 0, lastPos: new V3(),
-    walkPhase: 0, attackAnim: 0, painT: 0,
+    walkPhase: 0, attackAnim: 0, painT: 0, fuse: 0,
     // Client-side display state
     dispTarget: new V3(), dispVel: new V3(), dispT: 0, dispAim: false,
   };
@@ -2819,9 +3630,10 @@ function spawnEnemy(e) {
   const ok = ENEMY_SPAWNS.filter((s) => targets.every((t) => Math.hypot(s[0] - t.body.pos.x, s[2] - t.body.pos.z) > 20) &&
     !enemies.some((o) => o.alive && Math.hypot(o.body.pos.x - s[0], o.body.pos.z - s[2]) < 2));
   const s = pick(ok.length ? ok : ENEMY_SPAWNS);
-  e.body.pos.set(s[0], s[1], s[2]);
+  e.body.pos.set(s[0], s[1] + (e.def.fly || 0), s[2]);
   e.body.vel.set(0, 0, 0);
-  e.hp = e.def.hp * enemyCfg.hp;
+  e.fuse = 0;
+  e.hp = e.def.oneHit ? 1 : e.def.hp * enemyCfg.hp;
   e.alive = true;
   e.alert = false;
   e.tgt = null;
@@ -2875,6 +3687,7 @@ function killEnemy(e, dir, attackerId) {
   e.model.root.visible = false;
   e.respawn = enemyCfg.respawn * rnd(0.8, 1.2);
   enemyDeathFx(e, dir);
+  if (e.def.kamikaze) enemyExplode(e.body.pos.clone().setY(e.body.pos.y + 0.8), e.def.kamikaze.dmg * enemyCfg.dmg * 0.6, e.def.kamikaze.radius, e.type);
   if (attackerId === net.myId) creditEnemyKill(e);
   netSend({ t: 'ekill', i: e.idx, by: attackerId ?? ENEMY_ID, d: dir ? [r2(dir.x), r2(dir.z)] : null });
   // Drops only in singleplayer, where item lists never need syncing
@@ -2894,6 +3707,33 @@ function enemyDeathFx(e, dir) {
   c.y += e.def.height * 0.5;
   gibs(c, [e.def.look.shirt, e.def.look.skin, e.def.look.pants, 0x7a1010], dir, 26);
   soundAt('enemyDie', e.body.pos);
+}
+// Explosion caused by an enemy: hurts the local player and other players
+const _ek = new V3();
+function enemyExplode(pos, dmg, radius, type) {
+  explosionFx(pos, radius);
+  soundAt('explosion', pos);
+  state.shake = Math.max(state.shake, clamp(0.6 - camera.position.distanceTo(pos) * 0.03, 0, 0.6));
+  if (net.mode === 'host') netSend({ t: 'eboom', p: v3a(pos), r: radius });
+  const hit = (b) => {
+    const c = new V3(b.pos.x, b.pos.y + b.height * 0.5, b.pos.z);
+    const d = c.distanceTo(pos);
+    if (d > radius) return null;
+    _ek.copy(c).sub(pos);
+    if (_ek.lengthSq() < 1e-4) _ek.set(0, 1, 0);
+    _ek.normalize();
+    _ek.y += 0.35;
+    return { f: 1 - d / radius, dir: _ek.clone().normalize() };
+  };
+  if (state.alive) {
+    const h = hit(player);
+    if (h) damagePlayer(dmg * h.f, h.dir, 10 * h.f, ENEMY_ID, type);
+  }
+  for (const r of remotes.values()) {
+    if (!r.alive || !r.hasState) continue;
+    const h = hit(r.body);
+    if (h) enemyHitRemote(r, dmg * h.f, h.dir, 10 * h.f, type);
+  }
 }
 // Enemy damage to another player (host only)
 function enemyHitRemote(r, dmg, dir, knock, type) {
@@ -2966,9 +3806,13 @@ function updateEnemy(e, dt) {
   if (ml > 1e-3) { mx /= ml; mz /= ml; }
 
   // Avoid walking into lava
-  if (ml > 1e-3 && b.pos.y < 1 && lavaAhead(b.pos.x + mx * 1.2, b.pos.z + mz * 1.2) && !inLava(b.pos)) {
+  // Look further ahead the faster the enemy moves, so it can stop before an edge
+  const look = Math.max(1.2, Math.hypot(b.vel.x, b.vel.z) * 0.35 + b.radius);
+  const risky = (dx, dz) => dangerAhead(b.pos.x + dx * look, b.pos.z + dz * look, b.pos.y) ||
+    dangerAhead(b.pos.x + dx * look * 0.5, b.pos.z + dz * look * 0.5, b.pos.y);
+  if (!d.fly && ml > 1e-3 && risky(mx, mz) && !inLava(b.pos)) {
     const tx = -mz * e.strafeDir, tz = mx * e.strafeDir;
-    if (!lavaAhead(b.pos.x + tx * 1.2, b.pos.z + tz * 1.2)) { mx = tx; mz = tz; }
+    if (!risky(tx, tz)) { mx = tx; mz = tz; }
     else { mx = 0; mz = 0; }
     if (!e.alert) pickWander(e);
   }
@@ -2978,11 +3822,16 @@ function updateEnemy(e, dt) {
     const speed = d.speed * cfg.speed * (e.alert ? 1 : 0.6);
     let dvx = mx * speed - b.vel.x, dvz = mz * speed - b.vel.z;
     const dl = Math.hypot(dvx, dvz);
-    const maxDv = (b.onGround ? 30 : 8) * dt;
+    const maxDv = (b.onGround ? (ml > 1e-3 || !LAVA.length ? 30 : 60) : 8) * dt;
     if (dl > maxDv) { dvx *= maxDv / dl; dvz *= maxDv / dl; }
     b.vel.x += dvx; b.vel.z += dvz;
   }
-  b.vel.y -= phys.gravity * dt;
+  if (d.fly) {
+    const baseY = tgt ? tgt.body.pos.y : Math.max(0, b.pos.y - d.fly);
+    const alt = baseY + d.fly + Math.sin(state.time * 2 + e.idx) * 0.5;
+    b.vel.y = clamp((alt - b.pos.y) * 2.5, -6, 6);
+    b.padCd = 1;
+  } else b.vel.y -= phys.gravity * dt;
   moveBody(b, dt);
   applyZones(b, dt, false, () => damageEnemy(e, 20, null, 0, null));
   if (!e.alive) return;
@@ -2994,7 +3843,8 @@ function updateEnemy(e, dt) {
     const moved = Math.hypot(b.pos.x - e.lastPos.x, b.pos.z - e.lastPos.z);
     if (ml > 1e-3 && moved < 0.3) {
       e.stuckCount++;
-      if (b.onGround) b.vel.y = 8;
+      if (d.fly) b.pos.y += 1;
+      else if (b.onGround && !risky(mx, mz)) b.vel.y = 8 * (currentMap.jump || 1);
       if (e.stuckCount >= 2) { pickWander(e); e.strafeDir *= -1; e.stuckCount = 0; if (!e.los) e.alert = false; }
     } else e.stuckCount = 0;
     e.lastPos.copy(b.pos);
@@ -3007,12 +3857,39 @@ function updateEnemy(e, dt) {
       e.attackAnim = 0.25;
       _eEye.set(b.pos.x, b.pos.y + d.height * 0.78, b.pos.z);
       _pChest.set(tgt.body.pos.x, tgt.body.pos.y + 1.1, tgt.body.pos.z);
-      const dir = _pChest.clone().sub(_eEye).normalize();
-      spreadDir(dir, cfg.spread, dir);
-      const speed = d.projSpeed * cfg.proj;
-      spawnProjectile({ origin: _eEye, dir, speed, owner: 'enemy', ownerId: ENEMY_ID, weapon: e.type, dmg: d.dmg * cfg.dmg, splash: 0, radius: 0, knock: 0, color: 0xff7a2a, kind: 'bolt' });
-      soundAt('enemyShoot', b.pos);
-      if (net.mode === 'host') netSend({ t: 'efx', s: v3a(_eEye), d: [r3(dir.x), r3(dir.y), r3(dir.z)], v: r2(speed) });
+      let dir, speed, grav = 0;
+      if (d.lob) {
+        // Ballistic arc that lands on the target (with some scatter)
+        _pChest.y = tgt.body.pos.y + 0.2;
+        _pChest.x += rnd(-1, 1) * cfg.spread * 30;
+        _pChest.z += rnd(-1, 1) * cfg.spread * 30;
+        grav = phys.gravity * 0.6;
+        const dx = _pChest.x - _eEye.x, dz = _pChest.z - _eEye.z, dy = _pChest.y - _eEye.y;
+        const T = clamp(Math.hypot(dx, dz) / 14, 0.7, 2.2);
+        const v = new V3(dx / T, (dy + 0.5 * grav * T * T) / T, dz / T);
+        speed = v.length();
+        dir = v.divideScalar(speed);
+      } else {
+        dir = _pChest.clone().sub(_eEye).normalize();
+        spreadDir(dir, cfg.spread, dir);
+        speed = d.projSpeed * cfg.proj;
+      }
+      const color = d.projColor || 0xff7a2a;
+      const splash = d.projSplash ? d.projSplash * cfg.dmg : 0;
+      spawnProjectile({
+        origin: _eEye, dir, speed, owner: 'enemy', ownerId: ENEMY_ID, weapon: e.type, dmg: d.dmg * cfg.dmg,
+        splash, radius: d.projRadius || 0, knock: 0, color, kind: d.lob ? 'rocket' : 'bolt', gravity: grav,
+      });
+      soundAt(d.lob ? 'rocket' : 'enemyShoot', b.pos);
+      if (net.mode === 'host') {
+        netSend({ t: 'efx', s: v3a(_eEye), d: [r3(dir.x), r3(dir.y), r3(dir.z)], v: r2(speed), c: color, g: r2(grav), sp: d.projRadius || 0 });
+      }
+    }
+    if (d.kamikaze) {
+      // Light the fuse when close, explode when it runs out
+      const k = d.kamikaze;
+      const dy = Math.abs(tgt.body.pos.y - b.pos.y);
+      if (!e.fuse && dist < k.radius * 0.45 && dy < 2) { e.fuse = k.fuse; soundAt('pad', b.pos); }
     }
     if (d.melee) {
       const dy = Math.abs(tgt.body.pos.y - b.pos.y);
@@ -3024,12 +3901,28 @@ function updateEnemy(e, dt) {
         if (tgt.remote) enemyHitRemote(tgt.remote, dmg, dir, 7, e.type);
         else damagePlayer(dmg, dir, 7, ENEMY_ID, e.type);
         soundAt('punch', b.pos);
-      } else if (b.onGround && dist > 5 && dist < 10 && e.stun <= 0 && Math.random() < dt * 0.8 * cfg.speed) {
+      } else if (b.onGround && dist > 5 && dist < 10 && e.stun <= 0 && Math.random() < dt * 0.8 * cfg.speed &&
+        !dangerAhead(b.pos.x + _toP.x * 6, b.pos.z + _toP.z * 6, b.pos.y) && !dangerAhead(b.pos.x + _toP.x * 3, b.pos.z + _toP.z * 3, b.pos.y)) {
         // Leap toward the target
         b.vel.set(_toP.x * 11, 8.5, _toP.z * 11);
         b.onGround = false;
         e.stun = 0.8;
       }
+    }
+  }
+
+  if (e.fuse > 0) {
+    e.fuse -= dt;
+    e.flash = Math.sin(state.time * 40) > 0 ? 1 : 0;
+    if (e.fuse <= 0) {
+      const k = d.kamikaze;
+      e.alive = false;
+      e.model.root.visible = false;
+      e.respawn = cfg.respawn * rnd(0.8, 1.2);
+      enemyDeathFx(e, null);
+      netSend({ t: 'ekill', i: e.idx, by: ENEMY_ID, d: null });
+      enemyExplode(b.pos.clone().setY(b.pos.y + 0.8), k.dmg * cfg.dmg, k.radius, e.type);
+      return;
     }
   }
 
@@ -3114,8 +4007,9 @@ function animateEnemies(dt) {
     r.rotation.y = e.facing;
     const aim = authority ? e.def.ranged && e.alert && e.los : e.dispAim;
     animateHumanoid(e.model, hs, authority ? b.onGround : Math.abs(vel.y) < 1, e.walkPhase, aim, 0, e.def.melee ? e.attackAnim : 0, dt);
+    if (e.model.wings) for (const w of e.model.wings) w.rotation.z = Math.sin(state.time * 18 + e.idx) * 0.4;
     e.flash = Math.max(0, e.flash - dt * 6);
-    for (const m of e.model.mats) m.emissive.setScalar(e.flash * 0.8);
+    for (const m of e.model.mats) if (m.emissive) m.emissive.setScalar(e.flash * 0.8);
   }
 }
 
@@ -3123,7 +4017,12 @@ function animateEnemies(dt) {
 // Match flow (shared by singleplayer and multiplayer)
 // ============================================================
 function startMatch(p) {
-  match.settings = sanitizeSettings(p.settings);
+  match.settings = p.solo ? { ...p.settings } : sanitizeSettings(p.settings);
+  match.hardcore = !!p.hardcore;
+  match.over = false;
+  match.survived = 0;
+  match.victoryShown = false;
+  match.inVictory = false;
   match.mapId = p.map;
   match.difficulty = p.difficulty || 'medium';
   match.payload = p;
@@ -3141,10 +4040,11 @@ function startMatch(p) {
   deathScreen.style.display = 'none';
   scoreboardEl.style.display = 'none';
   Sound.play('start');
-  msg(`${mapById(p.map).name}${net.mode === 'solo' ? ' · ' + DIFFICULTIES[match.difficulty].label : ''} — fight!`, '#ffd27a');
+  msg(`${mapById(p.map).name}${net.mode === 'solo' ? ' · ' + (match.hardcore ? 'HARDCORE — one life!' : DIFFICULTIES[match.difficulty].label) : ''} — fight!`, match.hardcore ? '#ff8a7a' : '#ffd27a');
 }
 function stopMatch() {
   match.active = false;
+  match.over = false;
   clearEnemies();
   clearProjectiles();
   deathScreen.style.display = 'none';
@@ -3157,10 +4057,15 @@ function stopMatch() {
 }
 function startSolo() {
   if (net.mode !== 'solo') leaveNetwork();
-  const d = DIFFICULTIES[spDiff];
-  const settings = { ...DEFAULT_SETTINGS, enemies: true, fragLimit: 0, timeLimit: 0, itemRespawn: d.items, respawnDelay: 1 };
-  const cfg = makeEnemyCfg(spDiff);
-  startMatch({ map: spMap, settings, roster: buildRoster(cfg), enemyCfg: cfg, difficulty: spDiff });
+  if (!isMapUnlocked(spMap)) spMap = MAPS[0].id;
+  const hardcore = spHardcore;
+  const diff = hardcore ? (mapById(spMap).hardcoreDifficulty || HARDCORE_DIFFICULTY) : spDiff;
+  const d = DIFFICULTIES[diff];
+  const base = hardcore ? { ...HARDCORE_SETTINGS } : sanitizeWith(spSettings, SP_SCHEMA, SP_DEFAULTS);
+  const settings = { ...base, itemRespawn: base.itemRespawn * d.items, fragLimit: 0, timeLimit: 0 };
+  // 0 means "use the difficulty's value"
+  const cfg = base.enemies ? makeEnemyCfg(diff, base.enemyCount || undefined, base.enemyRespawn || undefined, base.enemyTypes, base) : null;
+  startMatch({ solo: true, hardcore, map: spMap, settings, roster: cfg ? buildRoster(cfg) : [], enemyCfg: cfg, difficulty: diff });
 }
 function quitToMenu() {
   if (net.mode !== 'solo') leaveNetwork();
@@ -3187,7 +4092,10 @@ const PEER_OPTS = {
 const net = {
   mode: 'solo', myId: 0, myColor: 0, name: 'Player', code: '', connected: false,
   peer: null, localBus: null, hostLink: null, links: new Set(), nextId: 1, lastAttacker: null, tick: 0,
+  publicN: 0, publicTry: 0,
 };
+const publicServer = (n) => PUBLIC_SERVERS.find((s) => s.n === n);
+const publicCode = (n) => 'PUB' + n;
 const remotes = new Map();
 const pendingHits = new Map();
 
@@ -3270,7 +4178,7 @@ function localHostListen(code, onLink) {
   window.addEventListener('pagehide', () => { for (const L of links.values()) L.close(); });
   return bus;
 }
-function localJoin(code, onOpen, onFail) {
+function localJoin(code, onOpen, onFail, isProbe = false) {
   const bus = new BroadcastChannel('arena3d-' + code);
   const me = 'c' + Math.random().toString(36).slice(2, 9);
   const L = localLink(bus, me, 'host');
@@ -3282,14 +4190,15 @@ function localJoin(code, onOpen, onFail) {
     if (m.t === 'x') { if (L.onclose) L.onclose(); return; }
     if (L.onmessage) L.onmessage(m.d);
   };
-  net.localBus = bus;
+  if (!isProbe) net.localBus = bus;
+  L.bus = bus;
   bus.postMessage({ to: 'host', from: me, t: 'open' });
-  setTimeout(() => { if (!opened) onFail(`Room ${code} not found`); }, 3000);
+  setTimeout(() => { if (!opened) { if (isProbe) bus.close(); onFail(`Room ${code} not found`, true); } }, isProbe ? 1500 : 3000);
   window.addEventListener('pagehide', () => L.close());
 }
 
 // ---------- Hosting ----------
-function startHost() {
+function startHost(fixedCode = null) {
   net.mode = 'host';
   net.myId = 0;
   net.connected = true;
@@ -3298,10 +4207,18 @@ function startHost() {
   lobby.votes = {};
   lobby.result = '';
   lobby.inMatch = false;
-  if (!MAPS.some((m) => m.id === lobby.hostMap)) lobby.hostMap = MAPS[0].id;
-  const code = randomCode();
+  // Locked maps (see unlockProgress) are only available once the host has unlocked them
+  lobby.unlocked = MAPS.filter((m) => isMapUnlocked(m.id)).map((m) => m.id);
+  if (!lobby.unlocked.includes(lobby.hostMap)) lobby.hostMap = MAPS[0].id;
+  const code = fixedCode || randomCode();
   net.code = '';
   netStatus('Creating room…');
+  if (net.publicN) {
+    // Public rooms always use their preset
+    const sv = publicServer(net.publicN);
+    lobby.settings = sanitizeSettings({ ...DEFAULT_SETTINGS, ...sv.settings, mapMode: 'host' });
+    lobby.hostMap = pick(PUBLIC_ROTATION); // random map when the server opens
+  }
   lobbyChanged();
   if (USE_LOCAL_NET) {
     net.localBus = localHostListen(code, onClientLink);
@@ -3316,13 +4233,24 @@ function startHost() {
   peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
   peer.on('error', (err) => {
     if (net.peer !== peer) return;
-    if (err.type === 'unavailable-id') { peer.destroy(); net.peer = null; startHost(); }
+    if (err.type === 'unavailable-id' && net.publicN) {
+      // Someone else opened this public room a moment earlier: join them instead
+      const n = net.publicN, tries = net.publicTry;
+      leaveNetwork(true);
+      if (tries < 4) setTimeout(() => startPublic(n, tries + 1), rnd(300, 900));
+      else netFail('Could not reach the public server');
+    } else if (err.type === 'unavailable-id') { peer.destroy(); net.peer = null; startHost(); }
     else if (err.type !== 'peer-unavailable') netStatus('Network problem: ' + err.type);
   });
 }
 function hostReady(code) {
   net.code = code;
   lobbyChanged();
+  if (net.publicN) {
+    msg(`You opened ${publicServer(net.publicN).name} — others can join now`, '#9fd4ff');
+    hostStartMatch();
+    enterMatchUI('Match started! Click Resume to play');
+  }
 }
 function lobbyPlayers() {
   const list = [{ id: net.myId, name: net.name, color: net.myColor }];
@@ -3330,7 +4258,10 @@ function lobbyPlayers() {
   return list;
 }
 function lobbyPayload() {
-  return { settings: lobby.settings, hostMap: lobby.hostMap, votes: lobby.votes, players: lobby.players, result: lobby.result, inMatch: lobby.inMatch };
+  return {
+    settings: lobby.settings, hostMap: lobby.hostMap, votes: lobby.votes, players: lobby.players, result: lobby.result,
+    inMatch: lobby.inMatch, unlocked: lobby.unlocked,
+  };
 }
 // Host: something in the lobby changed, show it and tell everyone
 function lobbyChanged() {
@@ -3361,6 +4292,10 @@ function hostBroadcast(m, except = null) {
 }
 function hostReceive(entry, m) {
   if (!m || typeof m !== 'object') return;
+  if (m.t === 'info' && entry.id === null) {
+    entry.link.send({ t: 'info', players: remotes.size + 1, max: MAX_PLAYERS, map: match.active ? mapById(match.mapId).name : null });
+    return;
+  }
   if (m.t === 'hello') {
     if (entry.id !== null) return;
     if (remotes.size + 1 >= MAX_PLAYERS) { entry.link.send({ t: 'full' }); return; }
@@ -3388,7 +4323,7 @@ function hostReceive(entry, m) {
   switch (m.t) {
     case 'pick': hostHandlePick(entry, m.i); return;
     case 'vote':
-      if (MAPS.some((mp) => mp.id === m.map)) { lobby.votes[entry.id] = m.map; lobbyChanged(); }
+      if (lobby.unlocked.includes(m.map)) { lobby.votes[entry.id] = m.map; lobbyChanged(); }
       return;
     case 'ehit': {
       const e = enemies[m.i];
@@ -3425,7 +4360,7 @@ function hostStartMatch() {
     const best = Object.keys(counts).filter((k) => counts[k] === top);
     if (best.length) map = pick(best);
   }
-  const cfg = s.enemies ? makeEnemyCfg(s.enemyDifficulty, s.enemyCount, s.enemyRespawn, s.enemyTypes) : null;
+  const cfg = s.enemies ? makeEnemyCfg(s.enemyDifficulty, s.enemyCount, s.enemyRespawn, s.enemyTypes, s) : null;
   const payload = { map, settings: { ...s }, roster: cfg ? buildRoster(cfg) : [], enemyCfg: cfg, difficulty: s.enemyDifficulty };
   lobby.inMatch = true;
   lobby.result = '';
@@ -3461,6 +4396,70 @@ function onMatchEnd(result) {
   msg(result, '#ffd27a');
   showScreen('Lobby');
   lobbyChanged();
+  if (net.mode === 'host' && net.publicN) {
+    const n = net.publicN;
+    setTimeout(() => {
+      if (net.mode !== 'host' || net.publicN !== n || match.active) return;
+      // A different random map every match
+      const others = PUBLIC_ROTATION.filter((id) => id !== lobby.hostMap);
+      lobby.hostMap = pick(others.length ? others : PUBLIC_ROTATION);
+      hostStartMatch();
+      enterMatchUI('Next match started! Click Resume to play');
+    }, 10000);
+  }
+}
+// Show the "click to play" menu unless the mouse is already captured
+function enterMatchUI(title) {
+  if (document.pointerLockElement || (dragLook && playing)) { hideOverlay(); return; }
+  showScreen('Pause');
+  $('pauseTitle').textContent = title;
+}
+// Join a public server; if it is empty, open it as its host
+function startPublic(n, tries = 0) {
+  if (net.mode !== 'solo') leaveNetwork();
+  net.publicN = n;
+  net.publicTry = tries;
+  startJoin(publicCode(n), () => {
+    leaveNetwork(true);
+    net.publicN = n;
+    net.publicTry = tries;
+    showScreen('Lobby');
+    startHost(publicCode(n));
+  });
+}
+// Ask a public room how many players it has, without joining it
+function probeServer(n, cb) {
+  const code = publicCode(n);
+  let done = false, cleanup = () => {};
+  const finish = (info) => {
+    if (done) return;
+    done = true;
+    try { cleanup(); } catch { /* ignore */ }
+    cb(info);
+  };
+  if (net.publicN === n && net.connected) {
+    finish({ players: remotes.size + 1, max: MAX_PLAYERS, map: match.active ? mapById(match.mapId).name : null });
+    return;
+  }
+  if (USE_LOCAL_NET) {
+    localJoin(code, (L) => {
+      cleanup = () => { L.close(); L.bus.close(); };
+      L.onmessage = (d) => { if (d && d.t === 'info') finish(d); };
+      L.send({ t: 'info' });
+    }, () => finish(null), true);
+    setTimeout(() => finish(null), 2500);
+    return;
+  }
+  if (typeof Peer === 'undefined') { finish(null); return; }
+  const peer = new Peer(PEER_OPTS);
+  cleanup = () => peer.destroy();
+  peer.on('open', () => {
+    const conn = peer.connect(ROOM_PREFIX + code, { reliable: true, serialization: 'json' });
+    conn.on('open', () => conn.send({ t: 'info' }));
+    conn.on('data', (d) => { if (d && d.t === 'info') finish(d); });
+  });
+  peer.on('error', () => finish(null));
+  setTimeout(() => finish(null), 7000);
 }
 function checkMatchEnd(dt) {
   if (!match.active || net.mode === 'solo') return;
@@ -3476,7 +4475,7 @@ function checkMatchEnd(dt) {
 }
 
 // ---------- Joining ----------
-function startJoin(code) {
+function startJoin(code, onNotFound = null) {
   net.mode = 'client';
   net.code = code;
   net.connected = false;
@@ -3488,11 +4487,21 @@ function startJoin(code) {
     L.onmessage = clientReceive;
     L.onclose = () => {
       if (net.mode !== 'client') return;
+      if (net.publicN) {
+        // Keep the public server alive: rejoin, or take over as the new host
+        const n = net.publicN;
+        msg('The host left — keeping the server running…', '#ffd27a');
+        leaveNetwork(true);
+        showScreen('Lobby');
+        netStatus('Reconnecting to the server…');
+        setTimeout(() => startPublic(n), rnd(200, 1500));
+        return;
+      }
       netFail('Connection to the host was lost');
     };
     L.send({ t: 'hello', name: net.name });
   };
-  if (USE_LOCAL_NET) { localJoin(code, onOpen, netFail); return; }
+  if (USE_LOCAL_NET) { localJoin(code, onOpen, (t, notFound) => (notFound && onNotFound ? onNotFound() : netFail(t))); return; }
   if (typeof Peer === 'undefined') { netFail('The multiplayer library could not be loaded'); return; }
   const peer = new Peer(PEER_OPTS);
   net.peer = peer;
@@ -3503,6 +4512,7 @@ function startJoin(code) {
   peer.on('error', (err) => {
     if (net.peer !== peer) return;
     if (net.connected) { netStatus('Network problem: ' + err.type); return; }
+    if (err.type === 'peer-unavailable' && onNotFound) { onNotFound(); return; }
     netFail(err.type === 'peer-unavailable' ? `Room ${code} not found` : 'Could not connect: ' + err.type);
   });
   setTimeout(() => {
@@ -3513,12 +4523,15 @@ function netFail(text) {
   msg(text, '#ff8a7a');
   const wasMatch = match.active;
   leaveNetwork();
+  net.publicN = 0;
   if (wasMatch) stopMatch();
   showScreen('Main');
   $('mainStatus').textContent = text;
 }
-function leaveNetwork() {
+// keepPublic: stay "in" the public server while switching between joining and hosting
+function leaveNetwork(keepPublic = false) {
   const wasNet = net.mode !== 'solo';
+  if (!keepPublic) net.publicN = 0;
   net.mode = 'solo';
   net.connected = false;
   const links = [...net.links];
@@ -3543,13 +4556,12 @@ function clientReceive(m) {
       setLocalColor(m.color);
       for (const p of m.players) addRemote(p.id, p.name, p.color, p.f, p.d);
       Object.assign(lobby, m.lobby);
-      netStatus(`Connected to room ${net.code}`);
-      msg(`Joined room ${net.code}`, '#9fd4ff');
+      netStatus(net.publicN ? `Connected to ${publicServer(net.publicN).name}` : `Connected to room ${net.code}`);
+      msg(net.publicN ? `Joined ${publicServer(net.publicN).name}` : `Joined room ${net.code}`, '#9fd4ff');
       if (m.match) {
         startMatch(m.match);
         m.match.items.forEach((a, i) => setItemActive(i, !!a, true));
-        showScreen('Pause');
-        $('pauseTitle').textContent = 'Match in progress — click Resume to play';
+        enterMatchUI('Match in progress — click Resume to play');
       } else showScreen('Lobby');
       break;
     case 'full': netFail('That room is full'); break;
@@ -3563,8 +4575,7 @@ function clientReceive(m) {
       break;
     case 'start':
       startMatch(m);
-      showScreen('Pause');
-      $('pauseTitle').textContent = 'Match started! Click Resume to play';
+      enterMatchUI('Match started! Click Resume to play');
       break;
     case 'end': onMatchEnd(m.result); break;
     case 'clock': match.timeLeft = m.tl; break;
@@ -3584,10 +4595,17 @@ function clientReceive(m) {
       if (m.by === net.myId) creditEnemyKill(e);
       break;
     }
+    case 'eboom': {
+      const pos = new V3(m.p[0], m.p[1], m.p[2]);
+      explosionFx(pos, m.r);
+      soundAt('explosion', pos);
+      break;
+    }
     case 'efx':
       spawnProjectile({
         origin: new V3(m.s[0], m.s[1], m.s[2]), dir: new V3(m.d[0], m.d[1], m.d[2]), speed: m.v,
-        owner: 'visual', ownerId: ENEMY_ID, weapon: 'grunt', dmg: 0, splash: 0, radius: 0, knock: 0, color: 0xff7a2a, kind: 'bolt',
+        owner: 'visual', ownerId: ENEMY_ID, weapon: 'grunt', dmg: 0, splash: m.sp ? 1 : 0, radius: m.sp || 0, knock: 0,
+        color: m.c || 0xff7a2a, kind: m.sp ? 'rocket' : 'bolt', gravity: m.g || 0,
       });
       soundAt('enemyShoot', new V3(m.s[0], m.s[1], m.s[2]));
       break;
@@ -3683,7 +4701,7 @@ function onKill(m) {
     const en = ENEMY_TYPES[m.w];
     msg(`${nameOf(m.victim)} was killed by a ${en ? en.name : 'monster'}`, '#ff9a6a');
   } else if (m.killer === m.victim) {
-    if (net.mode !== 'solo') msg(`${nameOf(m.victim)} ${m.w === 'lava' ? 'burned in the lava' : 'killed themself'}`, '#ff9a6a');
+    if (net.mode !== 'solo') msg(`${nameOf(m.victim)} ${m.w === 'lava' ? 'burned in the lava' : m.w === 'fall' ? 'fell to their death' : 'killed themself'}`, '#ff9a6a');
     if (m.victim === net.myId && net.mode !== 'solo') state.frags--;
   } else {
     const wName = WEAPONS[m.w] ? WEAPONS[m.w].name : m.w === 'telefrag' ? 'telefrag' : null;
@@ -3717,9 +4735,11 @@ function remoteFx(m) {
   } else if (m.k === 'pj') {
     const w = WEAPONS[m.w];
     spawnProjectile({
-      origin: new V3(m.s[0], m.s[1], m.s[2]), dir: new V3(m.d[0], m.d[1], m.d[2]), speed: w.speed,
+      origin: new V3(m.s[0], m.s[1], m.s[2]), dir: new V3(m.d[0], m.d[1], m.d[2]),
+      speed: w.speed * match.settings.projSpeed * (m.w === 'grenade' ? match.settings.grenadePower : 1),
       owner: 'visual', ownerId: m.id, weapon: m.w, dmg: 0, splash: w.splash || 0, radius: w.radius || 0, knock: 0,
-      color: w.color, kind: m.w === 'rocket' ? 'rocket' : 'bolt', visualFrom: o,
+      color: w.color, kind: projKind(m.w), visualFrom: o,
+      gravity: w.gravity ? phys.gravity * w.gravity : 0, bounce: w.bounce || 0, fuse: w.fuse,
     });
   }
   muzzleFlashLight(m.w, o);
@@ -3912,7 +4932,7 @@ function canPickup(it) {
     }
     case 'ammo': return !s.infiniteAmmo && state.ammo[def.ammo] < AMMO_MAX[def.ammo];
     case 'health': return state.health < def.max * s.maxHealth;
-    case 'armor': return state.armor < 200;
+    case 'armor': return state.armor < s.maxArmor;
   }
   return false;
 }
@@ -3944,7 +4964,7 @@ function applyPickup(it) {
       break;
     }
     case 'armor':
-      state.armor = Math.min(200, state.armor + def.amount);
+      state.armor = Math.min(s.maxArmor, state.armor + def.amount);
       msg(it.type === 'heavyArmor' ? 'Heavy armor!' : `+${def.amount} armor`, '#b6ff7a');
       Sound.play('pickupArmor');
       screenFlash('#90ff40', 0.12);
@@ -4137,6 +5157,7 @@ function updateViewModel(dt) {
 // ============================================================
 function fixedStep(dt) {
   state.time += dt;
+  if (match.hardcore && state.alive) match.survived += dt;
   updatePlayer(dt);
   if (isAuthority()) {
     for (const e of enemies) updateEnemy(e, dt);
@@ -4147,6 +5168,7 @@ function fixedStep(dt) {
   updateItems(dt);
   flushHits();
   checkMatchEnd(dt);
+  checkVictory();
 }
 
 const clock = new THREE.Clock();
