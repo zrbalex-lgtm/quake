@@ -51,6 +51,7 @@
   .serverRow .nm { font-weight: 700; font-size: 16px; }
   .serverRow .ds { font-size: 13px; color: #c9b8a6; }
   .serverRow .st { font-size: 13px; color: #9fd4ff; margin-top: 3px; }
+  .soon { font-size: 34px; font-weight: 900; letter-spacing: 3px; color: #e8a33a; text-transform: uppercase; text-shadow: 0 3px 0 #000; margin: 40px 0 36px; }
   .panel button.small { font-size: 13px; padding: 6px 12px; }
   .statTiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 4px; }
   .statTile { background: #1c1512; border: 1px solid #4a3627; border-radius: 8px; padding: 8px 6px; }
@@ -134,6 +135,12 @@
   #bossBar { position: fixed; left: 50%; top: 56px; transform: translateX(-50%); width: min(520px, 70vw); display: none; pointer-events: none; z-index: 6; text-align: center; }
   #bossBar .bn { color: #ffb070; font-weight: 900; letter-spacing: 3px; text-shadow: 0 2px 0 #000; margin-bottom: 4px; }
   #bossBar .bb { height: 14px; background: rgba(0,0,0,.6); border: 2px solid #5a1a10; border-radius: 7px; overflow: hidden; }
+  #bossMods { margin-top: 3px; font-size: 12px; color: #d9b89a; text-shadow: 0 1px 0 #000; letter-spacing: .5px; }
+  #bossEvent { margin-top: 8px; font-size: 19px; font-weight: 900; color: #ffcf6a; text-shadow: 0 2px 0 #000, 0 0 14px rgba(255,120,40,.7); opacity: 0; transition: opacity .3s; }
+  #bossEvent.ev5 { color: #7dff9a; text-shadow: 0 2px 0 #000, 0 0 14px rgba(60,255,120,.7); }
+  #bossEvent.ev4 { color: #ff6a5a; }
+  #bossEvent.ev6 { color: #ffaa33; }
+  #bossEvent.ev0 { color: #c9b8a6; font-size: 15px; }
   #bossHp { height: 100%; width: 100%; background: linear-gradient(90deg, #ff3a1a, #ffaa33); }
   .hud { display: none; }
   body.ingame .hud { display: block; }
@@ -145,6 +152,7 @@
   #topRight small { display: block; font-size: 13px; font-weight: 400; color: #ddd; }
   #timer { font-size: 18px; color: #ffd27a; }
   #msgs { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); text-align: center; pointer-events: none; font-size: 16px; font-weight: 700; text-shadow: 0 2px 2px #000; z-index: 21; }
+  #msgs.low { top: 178px; }
   #msgs div { transition: opacity .6s; margin-bottom: 3px; }
   #msgs div.fade { opacity: 0; }
 
@@ -267,6 +275,7 @@
       <div class="row">
         <button id="btnServersBack">Back</button>
         <button id="btnServersRefresh">Refresh</button>
+        <button id="btnCustom">Custom</button>
       </div>
     </section>
 
@@ -278,6 +287,12 @@
         <button id="btnKeysBack" class="primary">Done</button>
         <button id="btnKeysReset">Reset to defaults</button>
       </div>
+    </section>
+
+    <section id="scrCustom" class="scr">
+      <h2 style="font-size:20px">Custom servers</h2>
+      <div class="soon">Coming soon</div>
+      <div class="row"><button id="btnCustomBack" class="primary">Back</button></div>
     </section>
 
     <section id="scrStats" class="scr">
@@ -330,7 +345,7 @@
 </div>
 
 <div id="scope"><i></i></div>
-<div id="bossBar"><div class="bn">☠ TITAN</div><div class="bb"><div id="bossHp"></div></div></div>
+<div id="bossBar"><div class="bn" id="bossName">☠ TITAN</div><div class="bb"><div id="bossHp"></div></div><div id="bossMods"></div><div id="bossEvent"></div></div>
 <div id="flash"></div>
 <div id="crosshair"><i></i><i></i><i></i><i></i></div>
 
@@ -568,6 +583,24 @@ ENEMY_TYPES.titan = {
     core.scale.set(0.22, 0.22, 0.05);
     core.position.set(0, 1.3, 0.18);
     m.root.add(core);
+  },
+};
+// Minigunner: one per round on Insane and Nightmare
+ENEMY_TYPES.minigunner = {
+  name: 'Minigunner', hp: 660, frags: 5, once: true, minigun: true,
+  speed: 3.6, radius: 0.6, height: 2.1, scale: [1.3, 1.15, 1.3],
+  look: { skin: 0x6a5a4a, shirt: 0x2f4a2a, pants: 0x1e2a1a, eye: 0xff3322, pads: 0x4a5a3a },
+  ranged: true, gun: 'machinegun', projSpeed: 34, projColor: 0xffe066, dmg: 6, fireCd: [1, 1],
+  keepDist: 14, knockScale: 0.15, drop: 1,
+  burst: 20, burstRate: 0.1, volleys: 2, volleyPause: 2, retreat: 10,
+  decorate(m) {
+    const mat = new THREE.MeshStandardMaterial({ color: 0x3a3f44, roughness: 0.4, metalness: 0.7 });
+    m.mats.push(mat);
+    // Ammo backpack
+    const pack = new THREE.Mesh(unitBox, mat);
+    pack.scale.set(0.6, 0.7, 0.3);
+    pack.position.set(0, 1.35, -0.3);
+    m.root.add(pack);
   },
 };
 // More monsters: a flying imp, a suicide runner and a lobbing mortar
@@ -2471,7 +2504,7 @@ function renderStats() {
 
 function showScreen(name) {
   currentScreen = name;
-  for (const s of ['Main', 'Single', 'Lobby', 'Pause', 'Servers', 'Keys', 'Stats']) $('scr' + s).classList.toggle('active', s === name);
+  for (const s of ['Main', 'Single', 'Lobby', 'Pause', 'Servers', 'Keys', 'Stats', 'Custom']) $('scr' + s).classList.toggle('active', s === name);
   overlay.style.display = 'flex';
   if (name === 'Lobby') renderLobby();
   if (name === 'Pause') renderPause();
@@ -2962,6 +2995,8 @@ function assignKey(action, code) {
   binds[action] = code;
   saveBinds();
 }
+$('btnCustom').addEventListener('click', () => showScreen('Custom'));
+$('btnCustomBack').addEventListener('click', () => showScreen('Servers'));
 $('btnStats').addEventListener('click', () => { saveStats(); showScreen('Stats'); });
 $('btnStatsBack').addEventListener('click', () => showScreen('Main'));
 let statsResetArmed = 0;
@@ -3145,9 +3180,21 @@ function updateHud() {
   // Boss health bar
   const boss = match.active ? enemies.find((e) => e.def.boss && e.alive) : null;
   $('bossBar').style.display = boss ? 'block' : 'none';
+  msgBox.classList.toggle('low', !!boss);
   if (boss) {
     const frac = isAuthority() ? boss.hp / boss.maxHp : (boss.hpFrac ?? 1);
     $('bossHp').style.width = (clamp(frac, 0, 1) * 100).toFixed(1) + '%';
+    const n = boss.hpN || 1;
+    setText('bossName', n > 1 ? `☠ TITAN · ${n} players` : '☠ TITAN');
+    const mods = match.bossMods || {};
+    const tags = [`attacks every ${mods.cd ?? 5}s`];
+    if (mods.mortar) tags.push(`mortar every ${mods.mcd}s`);
+    if (mods.insane) tags.push('insane monsters');
+    if (mods.hc) tags.push('☠ hardcore');
+    setText('bossMods', tags.join(' · '));
+    const left = bossEventUntil - performance.now();
+    const ev = $('bossEvent');
+    ev.style.opacity = left > 0 ? String(clamp(left / 1000, 0, 1)) : '0';
   }
   if (!match.active) return;
   const s = match.settings;
@@ -3185,7 +3232,10 @@ function updateHud() {
   st.style.width = (state.stamina / CFG.staminaMax * 100).toFixed(1) + '%';
   st.classList.toggle('exhausted', state.exhausted);
   crosshair.classList.toggle('hit', state.hitMarkT > 0);
-  if (!state.alive && !match.hardcore) {
+  if (!state.alive && !match.hardcore && match.bossMods && match.bossMods.hc && !state.freeRespawn) {
+    const hint = '☠ Hardcore event — you are out until the next round';
+    if ($('deathHint').textContent !== hint) $('deathHint').textContent = hint;
+  } else if (!state.alive && !match.hardcore) {
     const wait = respawnWait();
     const hint = wait > 0 ? `Respawn in ${Math.ceil(wait)}…` : 'Click to respawn';
     if ($('deathHint').textContent !== hint) $('deathHint').textContent = hint;
@@ -3672,10 +3722,12 @@ function respawnWait() {
 }
 function tryRespawn() {
   if (match.hardcore) return;
+  if (match.bossMods && match.bossMods.hc && !state.freeRespawn) return;
   if (!state.alive && match.active && respawnWait() <= 0) respawnPlayer();
 }
 function respawnPlayer(quiet = false) {
   lifeStart = state.time;
+  state.freeRespawn = false;
   // Pick the spawn point farthest from other players and enemies
   const threats = [];
   for (const r of remotes.values()) if (r.alive && r.hasState) threats.push(r.body.pos);
@@ -3872,6 +3924,7 @@ function makeEnemyCfg(diffKey, count, respawn, types, s = DEFAULT_SETTINGS) {
     count: count ?? d.count, respawn: respawn ?? d.respawn, types: types || 'all',
     hp: d.hp * (s.enemyHealth ?? 1), dmg: d.dmg * (s.enemyDamage ?? 1), speed: d.speed * (s.enemySpeed ?? 1),
     fire: d.fire, spread: d.spread, brute: d.brute, sight: d.sight, proj: d.proj, boss: !!s.boss,
+    minigun: !!ENEMY_TYPES.minigunner && (diffKey === 'insane' || diffKey === 'nightmare'),
   };
 }
 // Relative weights of the monster types for each "Enemy types" choice
@@ -3899,6 +3952,7 @@ function buildRoster(cfg) {
   exact.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { counts[i]++; left--; } });
   const list = [];
   types.forEach((t, i) => { for (let k = 0; k < counts[i]; k++) list.push(t); });
+  if (cfg.minigun) list.push('minigunner'); // Minigunner: one per round
   if (cfg.boss) list.push('titan');
   return list;
 }
@@ -3918,7 +3972,7 @@ function createEnemy(type, idx) {
   const model = buildHumanoid(def.look);
   model.root.scale.set(...def.scale);
   model.root.visible = false;
-  if (def.ranged && !def.lob && !def.fly) attachGun(model.armR, buildWeaponModel('blaster'));
+  if (def.ranged && !def.lob && !def.fly) attachGun(model.armR, buildWeaponModel(def.gun || 'blaster'));
   if (def.decorate) def.decorate(model);
   const e = {
     idx, type, def, model, alive: false, hp: def.hp,
@@ -3956,11 +4010,24 @@ function spawnEnemy(e) {
   e.body.vel.set(0, 0, 0);
   e.fuse = 0;
   e.hp = e.def.oneHit ? 1 : e.def.hp * enemyCfg.hp;
-  // The boss gets tougher with more players
-  if (e.def.boss) e.hp *= 1 + 0.5 * Math.max(0, enemyTargets().length - 1);
   e.maxHp = e.hp;
+  if (e.def.boss) {
+    // The boss keeps its own stats, so events that change the monsters do not change it
+    e.bcfg = { ...enemyCfg };
+    e.baseHp = e.def.hp * e.bcfg.hp;
+    // Health grows in proportion to the number of players fighting it
+    e.hpN = bossPlayers();
+    e.maxHp = e.hp = e.baseHp * e.hpN;
+    e.quarters = 0;
+    e.cycleT = 0;
+    e.boltsDone = false;
+    e.barrage = 0;
+    e.mortarT = undefined;
+    e.barrageT = 0;
+    e.scaleT = 0;
+  }
   e.mode = null;
-  e.modeT = 0;
+  e.gState = 'attack'; e.burst = 0; e.burstT = 0; e.gT = 0;
   e.alive = true;
   e.alert = false;
   e.tgt = null;
@@ -4007,13 +4074,14 @@ function damageEnemy(e, amount, dir, knock, attackerId) {
     if (knock > 3 && !e.def.boss) e.stun = Math.max(e.stun, 0.35);
   }
   if (e.hp <= 0) killEnemy(e, dir, attackerId);
-  else if (e.painT <= 0) { soundAt('enemyPain', e.body.pos); e.painT = 0.3; }
+  else if (e.def.boss && isAuthority()) bossCheckQuarter(e);
+  if (e.alive && e.painT <= 0) { soundAt('enemyPain', e.body.pos); e.painT = 0.3; }
 }
 function enemyFragsCount() { return net.mode === 'solo' || match.settings.enemyFrags; }
 function killEnemy(e, dir, attackerId) {
   e.alive = false;
   e.model.root.visible = false;
-  e.respawn = e.def.boss ? 1e9 : enemyCfg.respawn * rnd(0.8, 1.2);
+  e.respawn = e.def.boss || e.def.once ? 1e9 : enemyCfg.respawn * rnd(0.8, 1.2);
   enemyDeathFx(e, dir);
   if (e.def.boss) stat((s) => { s.bossWins++; });
   if (e.def.boss && net.mode === 'host') {
@@ -4034,7 +4102,7 @@ function creditEnemyKill(e) {
   if (!enemyFragsCount()) return;
   state.frags += e.def.frags || 1;
   statFrags(e.def.frags || 1, false);
-  msg(e.def.boss ? `You killed the ${e.def.name}! +${e.def.frags} frags` : `${e.def.name} fragged!`, e.def.boss ? '#ffd27a' : '#ff9a6a');
+  msg(e.def.boss ? `You killed the ${e.def.name}! +${e.def.frags} frags` : (e.def.frags || 1) > 1 ? `${e.def.name} fragged! +${e.def.frags} frags` : `${e.def.name} fragged!`, e.def.boss ? '#ffd27a' : '#ff9a6a');
   Sound.play('frag');
 }
 function enemyDeathFx(e, dir) {
@@ -4077,6 +4145,245 @@ function enemyHitRemote(r, dmg, dir, knock, type) {
   netSend({ t: 'hit', to: r.id, from: ENEMY_ID, dmg: Math.round(dmg), k: v3a(k), w: type });
 }
 
+// Minigunner: 20-bolt barrage, 2 s pause, another 20 bolts, then 10 s running away, then back to attack
+function minigunUpdate(e, dt) {
+  const d = e.def, b = e.body, cfg = enemyCfg;
+  e.gT -= dt;
+  if (e.gState === 'retreat') {
+    e.alert = true;
+    if (e.gT <= 0) e.gState = 'attack';
+    return;
+  }
+  if (e.gState === 'pause') {
+    // Short pause between the barrages, then fire again
+    if (e.gT <= 0) { e.gState = 'attack'; e.burst = d.burst; e.burstT = 0; }
+    return;
+  }
+  if (e.burst > 0) {
+    e.burstT -= dt;
+    while (e.burstT <= 0 && e.burst > 0) {
+      e.burstT += d.burstRate;
+      e.burst--;
+      const aim = e.tgt ? e.tgt.body.pos : e.lastSeen;
+      _mgEye.set(b.pos.x, b.pos.y + d.height * 0.72, b.pos.z);
+      const dir = new V3(aim.x, aim.y + 1.1, aim.z).sub(_mgEye).normalize();
+      spreadDir(dir, cfg.spread + 0.035, dir);
+      const speed = d.projSpeed * cfg.proj;
+      spawnProjectile({ origin: _mgEye, dir, speed, owner: 'enemy', ownerId: ENEMY_ID, weapon: e.type, dmg: d.dmg * cfg.dmg,
+        splash: 0, radius: 0, knock: 0, color: d.projColor, kind: 'bolt', gravity: 0 });
+      const loud = e.burst % 2 === 0;
+      if (net.mode === 'host') netSend({ t: 'efx', s: v3a(_mgEye), d: [r3(dir.x), r3(dir.y), r3(dir.z)], v: r2(speed), c: d.projColor, g: 0, sp: 0, q: loud ? 0 : 1 });
+      if (loud) soundAt('machinegun', b.pos);
+      e.attackAnim = 0.2;
+    }
+    if (e.burst === 0) {
+      e.volley++;
+      if (e.volley < d.volleys) { e.gState = 'pause'; e.gT = d.volleyPause; }
+      else { e.gState = 'retreat'; e.gT = d.retreat; }
+    }
+    return;
+  }
+  // Start a barrage when a player is in sight and close enough
+  if (e.tgt && e.los && Math.hypot(e.tgt.body.pos.x - b.pos.x, e.tgt.body.pos.z - b.pos.z) < 32) {
+    e.burst = d.burst;
+    e.volley = 0;
+    e.burstT = 0.5; // spin-up
+    soundAt('pad', b.pos);
+  }
+}
+const _mgEye = new V3();
+
+// ============================================================
+// Titan boss: timed attacks and health events (host / solo only)
+// ============================================================
+function defaultBossMods() { return { cd: 5, fast: 0, insane: false, hc: false, mortar: false, mcd: 10 }; }
+function bossPlayers() { return net.mode === 'solo' ? 1 : 1 + remotes.size; }
+const _bAim = new V3(), _bEye = new V3();
+function bossFire(e, target, rocket, spread, barrage = false) {
+  const b = e.body, d = e.def, cfg = e.bcfg;
+  _bEye.set(b.pos.x, b.pos.y + d.height * 0.78, b.pos.z);
+  _bAim.set(target.body.pos.x, target.body.pos.y + 1.1, target.body.pos.z);
+  const dir = _bAim.sub(_bEye).normalize();
+  spreadDir(dir, spread, dir);
+  const speed = d.projSpeed * cfg.proj * (rocket ? 0.8 : 1);
+  const color = rocket ? 0xff6622 : d.projColor;
+  const splash = rocket ? (barrage ? 35 : 55) * cfg.dmg : 0;
+  const radius = rocket ? (barrage ? 3 : 4) : 0;
+  spawnProjectile({
+    origin: _bEye, dir, speed, owner: 'enemy', ownerId: ENEMY_ID, weapon: e.type, dmg: d.dmg * cfg.dmg * (barrage ? 0.5 : 1),
+    splash, radius, knock: 0, color, kind: rocket ? 'rocket' : 'bolt', gravity: 0,
+  });
+  const loud = !barrage || e.barrage % 2 === 0;
+  if (net.mode === 'host') netSend({ t: 'efx', s: v3a(_bEye), d: [r3(dir.x), r3(dir.y), r3(dir.z)], v: r2(speed), c: color, g: 0, sp: radius, q: loud ? 0 : 1 });
+  if (loud) soundAt(rocket ? 'rocket' : 'enemyShoot', b.pos);
+  e.attackAnim = 0.25;
+}
+// Mortar shell on a ballistic arc that lands on the target
+function bossLob(e, target) {
+  const b = e.body, d = e.def, cfg = e.bcfg, m = ENEMY_TYPES.mortar;
+  _bEye.set(b.pos.x, b.pos.y + d.height * 0.95, b.pos.z);
+  _bAim.set(target.body.pos.x + rnd(-1.5, 1.5), target.body.pos.y + 0.2, target.body.pos.z + rnd(-1.5, 1.5));
+  const grav = phys.gravity * 0.6;
+  const dx = _bAim.x - _bEye.x, dz = _bAim.z - _bEye.z, dy = _bAim.y - _bEye.y;
+  const T = clamp(Math.hypot(dx, dz) / 16, 0.9, 3);
+  const v = new V3(dx / T, (dy + 0.5 * grav * T * T) / T, dz / T);
+  const speed = v.length();
+  const dir = v.divideScalar(speed);
+  const splash = m.projSplash * 1.5 * cfg.dmg, radius = m.projRadius * 1.4;
+  spawnProjectile({
+    origin: _bEye, dir, speed, owner: 'enemy', ownerId: ENEMY_ID, weapon: e.type, dmg: m.dmg * cfg.dmg,
+    splash, radius, knock: 0, color: m.projColor, kind: 'rocket', gravity: grav,
+  });
+  if (net.mode === 'host') netSend({ t: 'efx', s: v3a(_bEye), d: [r3(dir.x), r3(dir.y), r3(dir.z)], v: r2(speed), c: m.projColor, g: r2(grav), sp: radius });
+  soundAt('rocket', b.pos);
+  e.attackAnim = 0.25;
+}
+function bossTargets(e) {
+  const b = e.body, range = e.bcfg.sight * 2;
+  return enemyTargets().filter((t) => Math.hypot(t.body.pos.x - b.pos.x, t.body.pos.z - b.pos.z) < range);
+}
+function bossUpdate(e, dt) {
+  const mods = match.bossMods;
+  // Rescale health when players join or leave, keeping the same fraction
+  e.scaleT -= dt;
+  if (e.scaleT <= 0) {
+    e.scaleT = 1;
+    const n = bossPlayers();
+    if (n !== e.hpN) {
+      const frac = e.hp / e.maxHp;
+      e.hpN = n;
+      e.maxHp = e.baseHp * n;
+      e.hp = e.maxHp * frac;
+    }
+  }
+  // One cycle: two bolts halfway through, rockets at the end, so they never fire together
+  const cd = mods.cd;
+  e.cycleT += dt;
+  if (!e.boltsDone && e.cycleT >= cd / 2) {
+    e.boltsDone = true;
+    for (const t of bossTargets(e)) { bossFire(e, t, false, 0.02); bossFire(e, t, false, 0.05); }
+  }
+  if (e.cycleT >= cd) {
+    e.cycleT = 0;
+    e.boltsDone = false;
+    for (const t of bossTargets(e)) bossFire(e, t, true, 0.015);
+  }
+  // Mortar event: a shell at every player, not at the same moment as the bolts or rockets
+  if (mods.mortar) {
+    e.mortarT = (e.mortarT ?? mods.mcd) - dt;
+    const c = e.cycleT, clear = c > 0.2 && Math.abs(c - cd / 2) > 0.2 && c < cd - 0.2;
+    if (e.mortarT <= 0 && clear) {
+      e.mortarT = mods.mcd;
+      for (const t of bossTargets(e)) bossLob(e, t);
+    }
+  }
+  // Rocket barrage event: 10 rockets per second at random players
+  if (e.barrage > 0) {
+    e.barrageT += dt;
+    while (e.barrageT >= 0.1 && e.barrage > 0) {
+      e.barrageT -= 0.1;
+      const ts = bossTargets(e);
+      if (!ts.length) break;
+      e.barrage--;
+      bossFire(e, pick(ts), true, 0.12, true);
+    }
+  }
+}
+// Each quarter of health lost rolls one event
+function bossCheckQuarter(e) {
+  while (e.alive && e.quarters < 3 && e.hp <= e.maxHp * (1 - (e.quarters + 1) / 4)) {
+    e.quarters++;
+    bossEvent(e, rollBossEvent());
+  }
+}
+// Base chances: 16.6 % each for events 1, 2, 3, 4 and 6, 8.4 % nothing, 8.4 % full heal.
+// Events that are already active (or maxed out) are left out, which raises the others.
+function rollBossEvent() {
+  const mods = match.bossMods;
+  const w = { 1: 16.6, 2: 16.6, 3: 16.6, 4: 16.6, 6: 16.6, 0: 8.4, 5: 8.4 };
+  if (mods.cd <= 1 && (!mods.mortar || mods.mcd <= 6)) delete w[2];
+  if (mods.mortar) delete w[6];
+  if (mods.insane) delete w[3];
+  if (mods.hc) delete w[4];
+  const keys = Object.keys(w);
+  let r = Math.random() * keys.reduce((a, k) => a + w[k], 0);
+  for (const k of keys) { r -= w[k]; if (r < 0) return +k; }
+  return 0;
+}
+function bossEvent(e, k) {
+  const mods = match.bossMods;
+  let text = '';
+  let add = null;
+  switch (k) {
+    case 1:
+      e.barrage += 20;
+      text = '🚀 ROCKET BARRAGE — 20 rockets incoming, take cover!';
+      break;
+    case 2:
+      mods.fast++;
+      mods.cd = Math.max(1, mods.cd - 2);
+      // The mortar only speeds up if it is already active, and by 4 s
+      if (mods.mortar) mods.mcd = Math.max(6, mods.mcd - 4);
+      if (e.mortarT > mods.mcd) e.mortarT = mods.mcd;
+      text = `⚡ FASTER ATTACKS — rockets and bolts every ${mods.cd}s` + (mods.mortar ? `, mortar every ${mods.mcd}s` : '');
+      break;
+    case 3: {
+      text = '👹 INSANE MONSTERS — the monsters are now on Insane';
+      if (mods.insane) break;
+      mods.insane = true;
+      const old = enemyCfg;
+      const ins = DIFFICULTIES.insane;
+      const mobs = enemies.filter((m) => !m.def.boss).length;
+      const s = match.settings;
+      enemyCfg = { ...makeEnemyCfg('insane', Math.max(mobs, ins.count), ins.respawn, old.types, s), boss: old.boss };
+      // Insane brings more monsters
+      const extra = Math.max(0, ins.count - mobs);
+      add = extra ? buildRoster({ ...enemyCfg, count: extra, boss: false, minigun: false }) : [];
+      if (ENEMY_TYPES.minigunner && !enemies.some((m) => m.type === 'minigunner')) add.push('minigunner');
+      if (add.length) {
+        for (const type of add) createEnemy(type, enemies.length);
+        if (match.payload && match.payload.roster) match.payload.roster.push(...add);
+      }
+      break;
+    }
+    case 4:
+      text = '☠ HARDCORE — die now and you are out until the next round!';
+      if (!mods.hc) {
+        mods.hc = true;
+        bossHardcoreStart();
+      }
+      break;
+    case 6:
+      text = `💣 MORTAR — the Titan now lobs mortar shells every ${mods.mcd}s`;
+      if (!mods.mortar) { mods.mortar = true; e.mortarT = mods.mcd; }
+      break;
+    case 5:
+      e.hp = e.maxHp;
+      e.quarters = 0;
+      text = '💚 THE TITAN FULLY HEALED!';
+      break;
+    default:
+      text = 'The Titan staggers… no event this time';
+  }
+  if (match.payload) match.payload.bossMods = { ...mods };
+  if (net.mode === 'host') netSend({ t: 'bev', text, k, mods: { ...mods }, add });
+  onBossEvent(text, k);
+}
+// Players who are already dead when hardcore starts may still respawn once
+function bossHardcoreStart() {
+  if (!state.alive) state.freeRespawn = true;
+  if (net.mode === 'host') match.freeIds = new Set([...remotes.values()].filter((r) => !r.alive).map((r) => r.id));
+}
+let bossEventUntil = 0;
+function onBossEvent(text, k) {
+  const el = $('bossEvent');
+  el.textContent = text;
+  el.className = 'ev' + k;
+  bossEventUntil = performance.now() + 7000;
+  Sound.play(k === 5 ? 'pickupMega' : k === 0 ? 'enemyPain' : 'teleport');
+  state.shake = Math.max(state.shake, 0.3);
+}
+
 const _toP = new V3(), _eEye = new V3(), _pChest = new V3(), _ldir = new V3();
 function updateEnemy(e, dt) {
   if (!e.alive) {
@@ -4084,19 +4391,10 @@ function updateEnemy(e, dt) {
     if (e.respawn <= 0) spawnEnemy(e);
     return;
   }
-  const b = e.body, d = e.def, cfg = enemyCfg;
-  let ranged = d.ranged, melee = d.melee;
-  if (d.boss) {
-    // Cycle between attack styles
-    e.modeT -= dt;
-    if (e.modeT <= 0 || !e.mode) {
-      e.mode = pick(['shoot', 'rockets', 'charge'].filter((m) => m !== e.mode));
-      e.modeT = rnd(5, 8);
-      soundAt('enemyDie', b.pos);
-    }
-    ranged = e.mode !== 'charge';
-    melee = e.mode === 'charge';
-  }
+  const b = e.body, d = e.def, cfg = d.boss && e.bcfg ? e.bcfg : enemyCfg;
+  const ranged = d.ranged, melee = d.melee;
+  if (d.boss) bossUpdate(e, dt);
+  if (d.minigun) minigunUpdate(e, dt);
   e.think -= dt; e.fireT -= dt; e.meleeT -= dt; e.painT -= dt; e.strafeT -= dt; e.wanderT -= dt;
   e.attackAnim = Math.max(0, e.attackAnim - dt);
 
@@ -4150,6 +4448,20 @@ function updateEnemy(e, dt) {
     if (wl < 1.5 || e.wanderT <= 0) pickWander(e);
     else { mx = wx / wl; mz = wz / wl; }
   }
+  if (d.minigun) { // Minigunner: stands still while firing, runs away while cooling down
+    if (e.burst > 0 || e.gState === 'pause') { mx = 0; mz = 0; }
+    else if (e.gState === 'retreat') {
+      const ts = enemyTargets();
+      let near = null, nd = 1e9;
+      for (const t of ts) { const dd = Math.hypot(t.body.pos.x - b.pos.x, t.body.pos.z - b.pos.z); if (dd < nd) { nd = dd; near = t; } }
+      if (near && nd < 45) {
+        const ax = b.pos.x - near.body.pos.x, az = b.pos.z - near.body.pos.z;
+        const l = Math.hypot(ax, az) || 1;
+        mx = ax / l - (az / l) * e.strafeDir * 0.4;
+        mz = az / l + (ax / l) * e.strafeDir * 0.4;
+      } else { mx = 0; mz = 0; } // far enough away: wait
+    }
+  }
   const ml = Math.hypot(mx, mz);
   if (ml > 1e-3) { mx /= ml; mz /= ml; }
 
@@ -4200,8 +4512,8 @@ function updateEnemy(e, dt) {
 
   // Attacks
   if (tgt && e.los) {
-    if (ranged && e.fireT <= 0 && dist < cfg.sight * (d.boss ? 2 : 1)) {
-      const bossRockets = d.boss && e.mode === 'rockets';
+    if (ranged && !d.boss && !d.minigun && e.fireT <= 0 && dist < cfg.sight) {
+      const bossRockets = false;
       e.fireT = rnd(...d.fireCd) * cfg.fire * (bossRockets ? 1.6 : 1);
       e.attackAnim = 0.25;
       _eEye.set(b.pos.x, b.pos.y + d.height * 0.78, b.pos.z);
@@ -4258,7 +4570,7 @@ function updateEnemy(e, dt) {
         if (tgt.remote) enemyHitRemote(tgt.remote, dmg, dir, kb, e.type);
         else damagePlayer(dmg, dir, kb, ENEMY_ID, e.type);
         soundAt('punch', b.pos);
-      } else if (b.onGround && dist > 5 && dist < (d.boss ? 22 : 10) && e.stun <= 0 && Math.random() < dt * 0.8 * cfg.speed &&
+      } else if (!d.boss && b.onGround && dist > 5 && dist < 10 && e.stun <= 0 && Math.random() < dt * 0.8 * cfg.speed &&
         !dangerAhead(b.pos.x + _toP.x * 6, b.pos.z + _toP.z * 6, b.pos.y) && !dangerAhead(b.pos.x + _toP.x * 3, b.pos.z + _toP.z * 3, b.pos.y)) {
         // Leap toward the target
         b.vel.set(_toP.x * (d.boss ? 15 : 11), d.boss ? 11 : 8.5, _toP.z * (d.boss ? 15 : 11));
@@ -4315,7 +4627,7 @@ function enemySnapshot() {
   return enemies.map((e) => (e.alive
     ? [1, r2(e.body.pos.x), r2(e.body.pos.y), r2(e.body.pos.z), r2(e.facing),
       (e.alert && e.los && e.def.ranged && e.mode !== 'charge' ? 1 : 0) | (e.attackAnim > 0 ? 2 : 0) | (e.flash > 0.5 ? 4 : 0),
-      ...(e.def.boss ? [r2(e.hp / e.maxHp)] : [])]
+      ...(e.def.boss ? [r2(e.hp / e.maxHp), e.hpN || 1] : [])]
     : [0]));
 }
 function applyEnemySnapshot(list) {
@@ -4337,7 +4649,7 @@ function applyEnemySnapshot(list) {
     e.dispAim = !!(s[5] & 1);
     if (s[5] & 2) e.attackAnim = 0.25;
     if (s[5] & 4) e.flash = 1;
-    if (s.length > 6) e.hpFrac = s[6];
+    if (s.length > 6) { e.hpFrac = s[6]; e.hpN = s[7] || 1; }
     if (!was) {
       e.alive = true;
       e.body.pos.copy(e.dispTarget);
@@ -4386,6 +4698,9 @@ function startMatch(p) {
   match.mapId = p.map;
   match.difficulty = p.difficulty || 'medium';
   match.payload = p;
+  match.bossMods = p.bossMods ? { ...p.bossMods } : defaultBossMods();
+  match.freeIds = new Set();
+  match.allDeadT = 0;
   applyPhysics(match.settings);
   loadMap(p.map);
   enemyCfg = p.enemyCfg || null;
@@ -4828,6 +5143,12 @@ function checkMatchEnd(dt) {
   const s = match.settings;
   if (s.timeLimit) match.timeLeft -= dt;
   if (net.mode !== 'host') return;
+  if (match.bossMods.hc && enemies.some((e) => e.def.boss && e.alive)) {
+    for (const r of remotes.values()) if (r.alive) match.freeIds.delete(r.id);
+    const anyone = state.alive || state.freeRespawn || [...remotes.values()].some((r) => r.alive || !r.hasState || match.freeIds.has(r.id));
+    match.allDeadT = anyone ? 0 : match.allDeadT + dt;
+    if (match.allDeadT > 2.5) { hostEndMatch('☠ Everyone is dead — the Titan wins'); return; }
+  }
   if (s.timeLimit && match.timeLeft <= 0) { hostEndMatch(enemies.some((e) => e.def.boss && e.alive) ? 'Time is up — the Titan survived' : ''); return; }
   if (s.fragLimit) {
     let top = state.frags;
@@ -4964,13 +5285,22 @@ function clientReceive(m) {
       soundAt('explosion', pos);
       break;
     }
+    case 'bev': {
+      if (!match.active) break;
+      const wasHc = match.bossMods.hc;
+      match.bossMods = { ...defaultBossMods(), ...m.mods };
+      if (Array.isArray(m.add)) for (const type of m.add) if (ENEMY_TYPES[type]) createEnemy(type, enemies.length);
+      if (match.bossMods.hc && !wasHc) bossHardcoreStart();
+      onBossEvent(String(m.text || ''), m.k | 0);
+      break;
+    }
     case 'efx':
       spawnProjectile({
         origin: new V3(m.s[0], m.s[1], m.s[2]), dir: new V3(m.d[0], m.d[1], m.d[2]), speed: m.v,
         owner: 'visual', ownerId: ENEMY_ID, weapon: 'grunt', dmg: 0, splash: m.sp ? 1 : 0, radius: m.sp || 0, knock: 0,
         color: m.c || 0xff7a2a, kind: m.sp ? 'rocket' : 'bolt', gravity: m.g || 0,
       });
-      soundAt('enemyShoot', new V3(m.s[0], m.s[1], m.s[2]));
+      if (!m.q) soundAt(m.sp ? 'rocket' : 'enemyShoot', new V3(m.s[0], m.s[1], m.s[2]));
       break;
     default: handleMessage(m);
   }
