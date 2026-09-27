@@ -51,6 +51,17 @@
   .serverRow .nm { font-weight: 700; font-size: 16px; }
   .serverRow .ds { font-size: 13px; color: #c9b8a6; }
   .serverRow .st { font-size: 13px; color: #9fd4ff; margin-top: 3px; }
+  .panel button.small { font-size: 13px; padding: 6px 12px; }
+  .statTiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 4px; }
+  .statTile { background: #1c1512; border: 1px solid #4a3627; border-radius: 8px; padding: 8px 6px; }
+  .statTile b { display: block; font-size: 22px; color: #ffd27a; font-variant-numeric: tabular-nums; }
+  @media (max-width: 560px) { .statTiles { grid-template-columns: repeat(2, 1fr); } }
+  .statTile span { font-size: 12px; color: #c9b8a6; }
+  .statTable { width: 100%; max-width: 560px; margin: 0 auto; border-collapse: collapse; font-size: 14px; }
+  .statTable td { padding: 4px 8px; border-bottom: 1px solid #33261d; text-align: left; }
+  .statTable td:last-child { text-align: right; font-variant-numeric: tabular-nums; color: #ffd27a; font-weight: 700; }
+  .statTable tr.dim td { color: #7d6a5c; }
+  .statCols { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 4px 18px; }
   .keyRow { display: grid; grid-template-columns: 1fr 190px; gap: 10px; align-items: center; text-align: left; padding: 3px 0; max-width: 460px; margin: 0 auto; }
   .panel button.keyBtn { min-width: 170px; font-family: inherit; }
   .panel button.keyBtn.wait { background: #b8741f; border-color: #ffd27a; }
@@ -114,6 +125,16 @@
   #crosshair.hit i { background: #ff3b30; }
 
   #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 4; }
+  #scope { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5;
+    background: radial-gradient(circle at center, transparent 0, transparent 33vmin, rgba(0,0,0,.35) 33.4vmin, rgba(0,0,0,.94) 34.5vmin); }
+  #scope::before, #scope::after { content: ''; position: absolute; background: rgba(0,0,0,.85); }
+  #scope::before { left: 50%; top: calc(50% - 33vmin); width: 2px; height: 66vmin; margin-left: -1px; }
+  #scope::after { top: 50%; left: calc(50% - 33vmin); height: 2px; width: 66vmin; margin-top: -1px; }
+  #scope i { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #ff3b30; z-index: 1; }
+  #bossBar { position: fixed; left: 50%; top: 56px; transform: translateX(-50%); width: min(520px, 70vw); display: none; pointer-events: none; z-index: 6; text-align: center; }
+  #bossBar .bn { color: #ffb070; font-weight: 900; letter-spacing: 3px; text-shadow: 0 2px 0 #000; margin-bottom: 4px; }
+  #bossBar .bb { height: 14px; background: rgba(0,0,0,.6); border: 2px solid #5a1a10; border-radius: 7px; overflow: hidden; }
+  #bossHp { height: 100%; width: 100%; background: linear-gradient(90deg, #ff3a1a, #ffaa33); }
   .hud { display: none; }
   body.ingame .hud { display: block; }
   body.ingame #hudBottom, body.ingame #center { display: flex; }
@@ -185,7 +206,7 @@
         <button id="btnJoin" class="primary">Join game</button>
       </div>
       <div class="status" id="mainStatus"></div>
-      <div class="row"><button id="btnResetScores" class="danger">Reset all high scores</button></div>
+      <div class="row"><button id="btnStats" class="small">📊 Statistics</button><button id="btnResetScores" class="danger">Reset all high scores</button></div>
       <details>
         <summary>Quick help</summary>
         <table class="keys" id="controlsHelp"></table>
@@ -259,6 +280,16 @@
       </div>
     </section>
 
+    <section id="scrStats" class="scr">
+      <h2 style="font-size:20px">Statistics</h2>
+      <div class="desc">Everything you have done, across every match you have played on this device.</div>
+      <div id="statsBody"></div>
+      <div class="row" style="margin-top:12px">
+        <button id="btnStatsBack" class="primary">Back</button>
+        <button id="btnStatsReset" class="danger">Reset statistics</button>
+      </div>
+    </section>
+
     <section id="scrPause" class="scr">
       <h2 id="pauseTitle" style="font-size:20px">Paused</h2>
       <div class="desc" id="pauseInfo"></div>
@@ -298,6 +329,8 @@
   </div>
 </div>
 
+<div id="scope"><i></i></div>
+<div id="bossBar"><div class="bn">☠ TITAN</div><div class="bb"><div id="bossHp"></div></div></div>
 <div id="flash"></div>
 <div id="crosshair"><i></i><i></i><i></i><i></i></div>
 
@@ -446,6 +479,7 @@ const SETTINGS_SCHEMA = [
   { key: 'enemyDamage', label: 'Enemy damage', type: 'range', min: 0, max: 4, step: 0.25, dep: 'enemies', fmt: (v) => '×' + v },
   { key: 'enemySpeed', label: 'Enemy speed', type: 'range', min: 0.5, max: 2, step: 0.1, dep: 'enemies', fmt: (v) => '×' + v.toFixed(1) },
   { key: 'enemyFrags', label: 'Enemy kills give frags', type: 'toggle', dep: 'enemies' },
+  { key: 'boss', label: 'Boss: the giant Titan', type: 'toggle', dep: 'enemies' },
 
   { type: 'header', label: 'Player' },
   { key: 'maxHealth', label: 'Max health', type: 'range', min: 50, max: 500, step: 25 },
@@ -478,7 +512,7 @@ const SETTINGS_SCHEMA = [
 const DEFAULT_SETTINGS = {
   mapMode: 'host', fragLimit: 20, timeLimit: 10, respawnDelay: 1,
   enemies: false, enemyCount: 6, enemyRespawn: 8, enemyDifficulty: 'medium', enemyTypes: 'all',
-  enemyHealth: 1, enemyDamage: 1, enemySpeed: 1, enemyFrags: true,
+  enemyHealth: 1, enemyDamage: 1, enemySpeed: 1, enemyFrags: true, boss: false,
   maxHealth: 100, healthRegen: 0, startArmor: 0, maxArmor: 200, speed: 1, jumpHeight: 1, airControl: 1, gravity: 1,
   infiniteStamina: false, staminaRate: 1, fallDamage: false,
   startWeapons: 'blaster', infiniteAmmo: false, dmgMul: 1, fireRate: 1, projSpeed: 1, rocketKnock: 1, grenadePower: 1, selfDamage: false,
@@ -508,6 +542,34 @@ try {
   }
 } catch { /* ignore */ }
 
+// Boss: a giant that switches between shooting, firing rockets and charging
+ENEMY_TYPES.titan = {
+  name: 'Titan', boss: true, hp: 3000, frags: 10, speed: 4.2, radius: 1.6, height: 7, scale: [3.5, 3.5, 3.5],
+  look: { skin: 0x4a2a22, shirt: 0x5a1010, pants: 0x1a1414, eye: 0xffaa00, pads: 0x2a2a2e },
+  ranged: true, melee: true, projSpeed: 26, projColor: 0xffaa33, dmg: 14, fireCd: [0.9, 1.5], keepDist: 16,
+  meleeDmg: 45, meleeCd: 1.2, knockScale: 0.05, drop: 0,
+  decorate(m) {
+    const dark = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.5, metalness: 0.6 });
+    const glow = new THREE.MeshStandardMaterial({ color: 0xff8822, emissive: 0xff5500, emissiveIntensity: 1.5 });
+    m.mats.push(dark, glow);
+    for (const sx of [-1, 1]) {
+      const horn = new THREE.Mesh(unitBox, dark);
+      horn.scale.set(0.08, 0.35, 0.08);
+      horn.position.set(sx * 0.17, 2.12, 0);
+      horn.rotation.z = -sx * 0.4;
+      m.root.add(horn);
+      const cannon = new THREE.Mesh(cylGeo, dark);
+      cannon.scale.set(0.09, 0.45, 0.09);
+      cannon.rotation.x = Math.PI / 2;
+      cannon.position.set(sx * 0.42, 1.75, 0.1);
+      m.root.add(cannon);
+    }
+    const core = new THREE.Mesh(unitBox, glow);
+    core.scale.set(0.22, 0.22, 0.05);
+    core.position.set(0, 1.3, 0.18);
+    m.root.add(core);
+  },
+};
 // More monsters: a flying imp, a suicide runner and a lobbing mortar
 Object.assign(ENEMY_TYPES, {
   imp: {
@@ -561,7 +623,7 @@ Object.assign(ENEMY_TYPES, {
 
 // Singleplayer settings: the difficulty buttons set the enemy strength, and
 // 0 for enemy count / respawn means "use the difficulty's value"
-const MP_ONLY_SETTINGS = new Set(['mapMode', 'fragLimit', 'timeLimit', 'enemyDifficulty', 'enemyFrags']);
+const MP_ONLY_SETTINGS = new Set(['mapMode', 'fragLimit', 'timeLimit', 'enemyDifficulty', 'enemyFrags', 'boss']);
 const SP_OVERRIDES = {
   enemyCount: { key: 'enemyCount', label: 'Max enemies', type: 'range', min: 0, max: 25, step: 1, dep: 'enemies', fmt: (v) => (v ? String(v) : 'Auto') },
   enemyRespawn: { key: 'enemyRespawn', label: 'Enemy respawn time', type: 'range', min: 0, max: 30, step: 1, dep: 'enemies', fmt: (v) => (v ? v + ' s' : 'Auto') },
@@ -593,6 +655,9 @@ const PUBLIC_SERVERS = [
     settings: { fragLimit: 0, timeLimit: 12, enemies: true, enemyCount: 12, enemyRespawn: 5, enemyDifficulty: 'hard', enemyTypes: 'all', enemyFrags: true, maxHealth: 150, healthRegen: 3 } },
   { n: 3, name: 'Server 3 · Chaos', desc: 'All weapons, infinite ammo, low gravity, huge knockback. First to 30.',
     settings: { fragLimit: 30, timeLimit: 8, startWeapons: 'all', infiniteAmmo: true, gravity: 0.6, jumpHeight: 1.5, rocketKnock: 2, grenadePower: 1.5, healthRegen: 5, selfDamage: false } },
+  { n: 4, name: 'Server 4 · Boss Fight', desc: 'Team up against the giant Titan in the Colosseum while normal monsters keep coming. Kill it within 15 minutes.',
+    map: 'colosseum',
+    settings: { fragLimit: 0, timeLimit: 15, enemies: true, boss: true, enemyDifficulty: 'medium', enemyTypes: 'all', enemyCount: 8, enemyRespawn: 8, enemyFrags: true, maxHealth: 150, healthRegen: 2, respawnDelay: 3 } },
 ];
 
 // Values that change with the match settings
@@ -961,6 +1026,7 @@ function portal(ax, ay, az, ayaw, bx, by, bz, byaw) {
   mapData.teleports.push({ pos: new V3(ax, ay, az), dest: out(bx, by, bz, byaw), yaw: byaw, twoWay: true });
   mapData.teleports.push({ pos: new V3(bx, by, bz), dest: out(ax, ay, az, ayaw), yaw: ayaw, twoWay: true });
 }
+function bossSpawn(x, y, z) { mapData.bossSpawn = [x, y, z]; }
 function light(x, y, z, color, intensity, dist) { mapData.lights.push([x, y, z, color, intensity, dist]); }
 function spawnP(x, y, z, yaw) { mapData.spawns.push([x, y, z, yaw ?? Math.atan2(x, z)]); }
 function spawnE(x, y, z) { mapData.enemySpawns.push([x, y, z]); }
@@ -1407,6 +1473,56 @@ const MAPS = [
       ]) item(...it);
     },
   },
+
+  {
+    // Boss arena used by the Boss Fight public server (not in the normal map lists)
+    id: 'colosseum', publicOnly: true, name: 'Colosseum', desc: 'A giant stormy arena built for the Titan.',
+    half: 70, ground: 'sand', wall: 'marble', wallHeight: 16,
+    preview: 'linear-gradient(#2a3a3a, #6a7a70 55%, #b98a55 56%, #8a6a4a)',
+    theme: { sky: ['#1a2226', '#3a4a4a', '#8a9a90', '#3a3024'], bg: 0x3a4a4a, fog: [0x56645e, 60, 220], hemi: [0xc8d8d0, 0x5a4a38, 1.0], sun: [0xfff0d8, 1.8] },
+    build() {
+      // Raised outer terrace with stairs down into the arena
+      solid(-70, 0, -70, 70, 4, -62, 'marble');
+      solid(-70, 0, 62, 70, 4, 70, 'marble');
+      solid(-70, 0, -62, -62, 4, 62, 'marble');
+      solid(62, 0, -62, 70, 4, 62, 'marble');
+      for (const x of [-30, 30]) { stairs(x, -62, '+z', 5, 0, 4); stairs(x, 62, '-z', 5, 0, 4); }
+      for (const z of [-30, 30]) { stairs(-62, z, '+x', 5, 0, 4); stairs(62, z, '-x', 5, 0, 4); }
+      // Sniper towers in the corners, reached with jump pads
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        solid(sx * 45, 0, sz * 45, sx * 51, 14, sz * 51, 'stone');
+        pad(sx * 38, 0, sz * 38, sx * 48, 14, sz * 48, 18);
+      }
+      // Ring of pillars and low walls for cover
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 + 0.26;
+        const x = Math.cos(a) * 36, z = Math.sin(a) * 36;
+        solid(x - 1.2, 0, z - 1.2, x + 1.2, 10, z + 1.2, 'marble');
+      }
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const x = Math.cos(a) * 20, z = Math.sin(a) * 20;
+        if (Math.abs(Math.cos(a)) > 0.7) solid(x - 0.6, 0, z - 3, x + 0.6, 1.5, z + 3, 'stone');
+        else if (Math.abs(Math.sin(a)) > 0.7) solid(x - 3, 0, z - 0.6, x + 3, 1.5, z + 0.6, 'stone');
+        else solid(x - 1.5, 0, z - 1.5, x + 1.5, 1.5, z + 1.5, 'crate');
+      }
+      bossSpawn(0, 0, 0);
+
+      for (const [x, z] of [[0, -66], [0, 66], [-66, 0], [66, 0], [-50, -66], [50, 66], [-66, 50], [66, -50]]) spawnP(x, 4, z);
+      for (const p of [[-28, 0, -12], [28, 0, 12], [-28, 0, 12], [28, 0, -12], [0, 0, -45], [0, 0, 45], [-45, 0, 0], [45, 0, 0],
+        [-55, 0, -20], [55, 0, 20], [-20, 0, 55], [20, 0, -55], [0, 4, -66], [0, 4, 66]]) spawnE(...p);
+      for (const p of [[0, 0, -12], [12, 0, 0], [0, 0, 12], [-12, 0, 0], [-30, 0, -30], [30, 0, 30]]) wander(...p);
+
+      for (const it of [
+        ['railgun', -48, 14, -48], ['railgun', 48, 14, 48], ['rocket', -48, 14, 48], ['rocket', 48, 14, -48],
+        ['machinegun', 0, 4, -66], ['shotgun', 0, 4, 66], ['grenade', -66, 4, 0], ['machinegun', 66, 4, 0],
+        ['mega', 0, 0, -28], ['heavyArmor', 0, 0, 28], ['armor', -28, 0, 0], ['armor', 28, 0, 0],
+        ['health', -66, 4, -40], ['health', 66, 4, 40], ['health', -40, 4, 66], ['health', 40, 4, -66], ['health', -12, 0, -12], ['health', 12, 0, 12],
+        ['rockets', -30, 0, 10], ['rockets', 30, 0, -10], ['slugs', -48, 14, -46], ['slugs', 48, 14, 46],
+        ['shells', 10, 0, 30], ['bullets', -10, 0, -30], ['grenades', -50, 4, 66], ['grenades', 50, 4, -66],
+      ]) item(...it);
+    },
+  },
 ];
 const mapById = (id) => MAPS.find((m) => m.id === id) || MAPS[0];
 // Maps with an "unlock" rule need hardcore best scores on other maps
@@ -1420,7 +1536,7 @@ const isMapUnlocked = (id) => unlockProgress(mapById(id)).unlocked;
 // ---------- Loading ----------
 let currentMap = MAPS[0];
 let W = 50;
-let LAVA = [], PADS = [], TELEPORTS = [], PLAYER_SPAWNS = [], ENEMY_SPAWNS = [], WANDER_POINTS = [];
+let LAVA = [], PADS = [], TELEPORTS = [], PLAYER_SPAWNS = [], ENEMY_SPAWNS = [], WANDER_POINTS = [], BOSS_SPAWN = null;
 const lavaMats = { lava: new THREE.MeshBasicMaterial({ map: texLava }), toxic: new THREE.MeshBasicMaterial({ map: texToxic }) };
 const padBaseGeo = new THREE.CylinderGeometry(1.1, 1.2, 0.12, 24);
 const ringGeo = new THREE.TorusGeometry(1.0, 0.08, 8, 32);
@@ -1470,10 +1586,11 @@ function loadMap(id) {
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   world.add(ground);
-  solid(-W - 1, 0, -W - 1, W + 1, 12, -W, def.wall);
-  solid(-W - 1, 0, W, W + 1, 12, W + 1, def.wall);
-  solid(-W - 1, 0, -W, -W, 12, W, def.wall);
-  solid(W, 0, -W, W + 1, 12, W, def.wall);
+  const wh = def.wallHeight || 12;
+  solid(-W - 1, 0, -W - 1, W + 1, wh, -W, def.wall);
+  solid(-W - 1, 0, W, W + 1, wh, W + 1, def.wall);
+  solid(-W - 1, 0, -W, -W, wh, W, def.wall);
+  solid(W, 0, -W, W + 1, wh, W, def.wall);
   if (def.ceiling) {
     // Enclosed map: walls up to the roof and a ceiling
     solid(-W - 1, 12, -W - 1, W + 1, def.ceiling, -W, def.wall);
@@ -1527,6 +1644,7 @@ function loadMap(id) {
     world.add(l);
   }
   PLAYER_SPAWNS = mapData.spawns;
+  BOSS_SPAWN = mapData.bossSpawn || null;
   ENEMY_SPAWNS = mapData.enemySpawns;
   WANDER_POINTS = [...ENEMY_SPAWNS, ...mapData.wander];
   const s = match.settings;
@@ -2197,13 +2315,168 @@ function saveBest(mapId, frags, time) {
   return { better, old };
 }
 
+// ============================================================
+// Lifetime statistics (stored on this device)
+// ============================================================
+function emptyStats() {
+  return {
+    matches: { sp: 0, mp: 0, hardcore: 0 },
+    frags: { total: 0, sp: 0, mp: 0, enemy: 0, player: 0 },
+    kills: {}, // enemy type -> kills
+    bossKills: 0, bossWins: 0,
+    deaths: 0, deathsBy: { enemy: 0, player: 0, self: 0 },
+    bestMatch: 0,
+    dmgDealt: 0, dmgTaken: 0,
+    shots: {}, // weapon -> shots fired
+    pickups: { weapon: 0, ammo: 0, health: 0, mega: 0, armor: 0 },
+    distance: 0, playTime: 0, longestLife: 0,
+  };
+}
+// Merge saved data over the defaults so older saves gain new fields
+function mergeStats(base, saved) {
+  for (const k in saved) {
+    if (base[k] && typeof base[k] === 'object' && saved[k] && typeof saved[k] === 'object') mergeStats(base[k], saved[k]);
+    else if (typeof saved[k] === 'number' && isFinite(saved[k])) base[k] = saved[k];
+  }
+  return base;
+}
+let stats = emptyStats();
+try { stats = mergeStats(emptyStats(), JSON.parse(localStorage.getItem('arena3d-stats') || '{}') || {}); } catch { /* ignore */ }
+let statsDirty = false;
+function saveStats() {
+  if (!statsDirty) return;
+  statsDirty = false;
+  try { localStorage.setItem('arena3d-stats', JSON.stringify(stats)); } catch { /* ignore */ }
+}
+setInterval(saveStats, 5000);
+addEventListener('beforeunload', saveStats);
+addEventListener('pagehide', saveStats);
+const statMode = () => (net.mode === 'solo' ? 'sp' : 'mp');
+function stat(fn) { fn(stats); statsDirty = true; }
+function statFrags(n, fromPlayer) {
+  if (n <= 0) return;
+  stat((s) => {
+    s.frags.total += n;
+    s.frags[statMode()] += n;
+    s.frags[fromPlayer ? 'player' : 'enemy'] += n;
+  });
+}
+function statEnemyKill(e) { stat((s) => { s.kills[e.type] = (s.kills[e.type] || 0) + 1; if (e.def.boss) s.bossKills++; }); }
+let lifeStart = 0;
+function statMatchStart() {
+  stat((s) => { s.matches[statMode()]++; if (match.hardcore) s.matches.hardcore++; });
+  match.statsOpen = true;
+  lifeStart = state.time;
+}
+function statMatchEnd() {
+  if (!match.statsOpen) return;
+  match.statsOpen = false;
+  stat((s) => { s.bestMatch = Math.max(s.bestMatch, state.frags); });
+  statLifeEnd();
+  saveStats();
+}
+function statLifeEnd() {
+  const t = state.time - lifeStart;
+  lifeStart = state.time;
+  if (t > stats.longestLife) stat((s) => { s.longestLife = t; });
+}
+
+function renderStats() {
+  const s = stats, n = (v) => Math.round(v).toLocaleString('en-US');
+  const tile = (v, label) => `<div class="statTile"><b>${v}</b><span>${label}</span></div>`;
+  const rows = (list) => `<table class="statTable">${list.map(([a, b, dim]) => `<tr${dim ? ' class="dim"' : ''}><td>${a}</td><td>${b}</td></tr>`).join('')}</table>`;
+  const matches = s.matches.sp + s.matches.mp;
+  const kd = s.deaths ? (s.frags.total / s.deaths).toFixed(2) : n(s.frags.total);
+  const totalShots = Object.values(s.shots).reduce((a, b) => a + b, 0);
+  const totalKills = Object.values(s.kills).reduce((a, b) => a + b, 0);
+  const hrs = (sec) => sec >= 3600 ? `${Math.floor(sec / 3600)}h ${Math.floor(sec % 3600 / 60)}m` : fmtTime(sec);
+
+  const enemyRows = Object.keys(ENEMY_TYPES).sort((a, b) => !!ENEMY_TYPES[a].boss - !!ENEMY_TYPES[b].boss).map((id) => [ENEMY_TYPES[id].name + (ENEMY_TYPES[id].boss ? ' (boss)' : ''), n(s.kills[id] || 0), !s.kills[id]]);
+  enemyRows.push(['<b>All monsters</b>', n(totalKills)]);
+  const bests = loadBests();
+  const hcRows = MAPS.filter((m) => !m.publicOnly && (!m.secret || isMapUnlocked(m.id) || bests[m.id])).map((m) => {
+    const b = bests[m.id];
+    return [m.name + (m.secret ? ' ☠' : ''), b ? `${b.frags} frags · ${fmtTime(b.time)}` : '—', !b];
+  });
+  let beaten = false;
+  try { beaten = localStorage.getItem('arena3d-beaten') === '1'; } catch { /* ignore */ }
+  const weaponRows = ORDER.map((id) => [WEAPONS[id].name, n(s.shots[id] || 0), !s.shots[id]]);
+
+  $('statsBody').innerHTML = `
+    <div class="statTiles">
+      ${tile(n(s.frags.total), 'total frags')}
+      ${tile(n(matches), 'matches played')}
+      ${tile(n(totalKills), 'monsters killed')}
+      ${tile(n(s.bossWins), 'boss wins')}
+      ${tile(n(s.deaths), 'deaths')}
+      ${tile(kd, 'frags / death')}
+      ${tile(n(s.bestMatch), 'best match (frags)')}
+      ${tile(hrs(s.playTime), 'time played')}
+    </div>
+    <div class="statCols">
+      <div>
+        <h2>Frags</h2>
+        ${rows([
+          ['Singleplayer frags', n(s.frags.sp)],
+          ['Multiplayer frags', n(s.frags.mp)],
+          ['Frags from monsters', n(s.frags.enemy)],
+          ['Frags from players', n(s.frags.player)],
+          ['Titan final blows', n(s.bossKills)],
+          ['Titan fights won', n(s.bossWins)],
+        ])}
+        <h2>Matches</h2>
+        ${rows([
+          ['Singleplayer', n(s.matches.sp)],
+          ['Multiplayer', n(s.matches.mp)],
+          ['Hardcore runs', n(s.matches.hardcore)],
+          ['Game beaten', beaten ? '🏆 Yes' : 'Not yet', !beaten],
+        ])}
+        <h2>Hardcore bests</h2>
+        ${rows(hcRows)}
+      </div>
+      <div>
+        <h2>Monsters fragged</h2>
+        ${rows(enemyRows)}
+        <h2>Survival</h2>
+        ${rows([
+          ['Killed by monsters', n(s.deathsBy.enemy)],
+          ['Killed by players', n(s.deathsBy.player)],
+          ['Own fault (lava, falls, rockets)', n(s.deathsBy.self)],
+          ['Longest life', fmtTime(s.longestLife)],
+          ['Damage dealt', n(s.dmgDealt)],
+          ['Damage taken', n(s.dmgTaken)],
+        ])}
+      </div>
+      <div>
+        <h2>Items picked up</h2>
+        ${rows([
+          ['Weapons', n(s.pickups.weapon)],
+          ['Ammo', n(s.pickups.ammo)],
+          ['Health', n(s.pickups.health)],
+          ['Mega health', n(s.pickups.mega)],
+          ['Armor', n(s.pickups.armor)],
+        ])}
+        <h2>Other</h2>
+        ${rows([
+          ['Shots fired', n(totalShots)],
+          ['Distance run', `${(s.distance / 1000).toFixed(2)} km`],
+        ])}
+      </div>
+      <div>
+        <h2>Shots by weapon</h2>
+        ${rows(weaponRows)}
+      </div>
+    </div>`;
+}
+
 function showScreen(name) {
   currentScreen = name;
-  for (const s of ['Main', 'Single', 'Lobby', 'Pause', 'Servers', 'Keys']) $('scr' + s).classList.toggle('active', s === name);
+  for (const s of ['Main', 'Single', 'Lobby', 'Pause', 'Servers', 'Keys', 'Stats']) $('scr' + s).classList.toggle('active', s === name);
   overlay.style.display = 'flex';
   if (name === 'Lobby') renderLobby();
   if (name === 'Pause') renderPause();
   if (name === 'Single') renderSingle();
+  if (name === 'Stats') renderStats();
   if (name === 'Keys') renderKeys();
   if (name === 'Servers') renderServers(true);
   if (name === 'Main') renderMain();
@@ -2242,7 +2515,7 @@ function toggleView() {
 function buildMapCards(container, onPick) {
   container.innerHTML = '';
   for (const m of MAPS) {
-    if (m.secret) continue; // secret maps are only reachable through the lock
+    if (m.secret || m.publicOnly) continue; // secret maps use the lock, public-only maps the servers
     const c = document.createElement('div');
     c.className = 'mapCard';
     c.dataset.id = m.id;
@@ -2672,6 +2945,7 @@ function renderControlsHelp() {
   $('controlsHelp').innerHTML = [
     [`${k('forward')} ${k('left')} ${k('back')} ${k('right')}`, 'Move'],
     ['<kbd>Mouse</kbd>', 'Look / aim'],
+    ['<kbd>Right mouse</kbd>', 'Railgun scope (hold)'],
     [`<kbd>Left click</kbd>${binds.fire ? ' / ' + k('fire') : ''}`, 'Shoot (hold for auto fire)'],
     [k('sprint'), 'Sprint (uses stamina)'],
     [k('jump'), 'Jump'],
@@ -2688,6 +2962,24 @@ function assignKey(action, code) {
   binds[action] = code;
   saveBinds();
 }
+$('btnStats').addEventListener('click', () => { saveStats(); showScreen('Stats'); });
+$('btnStatsBack').addEventListener('click', () => showScreen('Main'));
+let statsResetArmed = 0;
+$('btnStatsReset').addEventListener('click', () => {
+  const now = performance.now(), b = $('btnStatsReset');
+  if (now > statsResetArmed) {
+    statsResetArmed = now + 4000;
+    b.textContent = 'Click again to delete your statistics';
+    setTimeout(() => { if (performance.now() > statsResetArmed) b.textContent = 'Reset statistics'; }, 4100);
+    return;
+  }
+  statsResetArmed = 0;
+  stats = emptyStats();
+  statsDirty = true;
+  saveStats();
+  b.textContent = 'Reset statistics';
+  renderStats();
+});
 $('btnKeys').addEventListener('click', () => { captureAction = null; showScreen('Keys'); });
 $('btnKeysBack').addEventListener('click', () => { captureAction = null; showScreen(match.active ? 'Pause' : 'Main'); });
 $('btnKeysReset').addEventListener('click', () => { binds = { ...DEFAULT_BINDS }; saveBinds(); captureAction = null; renderKeys(); });
@@ -2739,6 +3031,7 @@ window.addEventListener('keyup', (e) => {
 window.addEventListener('blur', () => {
   keys.clear();
   firing = false;
+  scopeHeld = false;
   scoreboardEl.style.display = 'none';
 });
 
@@ -2758,17 +3051,28 @@ document.addEventListener('pointerlockchange', () => {
 });
 document.addEventListener('pointerlockerror', startDragMode);
 
+// Railgun scope: hold the right mouse button (with the mouse captured)
+let scopeHeld = false;
+function isScoped() {
+  return scopeHeld && playing && match.active && state.alive && state.weapon === 'railgun';
+}
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (!playing) return;
   if (e.button === 0) {
     if (!state.alive) { tryRespawn(); return; }
     firing = true;
   }
-  if (e.button === 2) rightDown = true;
+  if (e.button === 2) {
+    rightDown = true;
+    if (document.pointerLockElement === renderer.domElement) {
+      scopeHeld = true;
+      if (state.weapon === 'railgun') Sound.play('switch');
+    }
+  }
 });
 window.addEventListener('mouseup', (e) => {
   if (e.button === 0) firing = false;
-  if (e.button === 2) rightDown = false;
+  if (e.button === 2) { rightDown = false; scopeHeld = false; }
 });
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -2776,8 +3080,9 @@ document.addEventListener('mousemove', (e) => {
   const locked = document.pointerLockElement === renderer.domElement;
   if (!playing || (!locked && !(dragLook && rightDown))) return;
   if (!state.alive) return;
-  player.yaw -= e.movementX * CFG.mouseSens;
-  player.pitch = clamp(player.pitch - e.movementY * CFG.mouseSens, -1.5, 1.5);
+  const sens = CFG.mouseSens * (isScoped() ? 0.3 : 1);
+  player.yaw -= e.movementX * sens;
+  player.pitch = clamp(player.pitch - e.movementY * sens, -1.5, 1.5);
 });
 
 window.addEventListener('wheel', (e) => {
@@ -2834,7 +3139,16 @@ function fmtTime(t) {
 }
 function updateHud() {
   document.body.classList.toggle('ingame', match.active);
-  crosshair.style.display = match.active && state.alive ? 'block' : 'none';
+  const scoped = isScoped();
+  crosshair.style.display = match.active && state.alive && !scoped ? 'block' : 'none';
+  $('scope').style.display = scoped ? 'block' : 'none';
+  // Boss health bar
+  const boss = match.active ? enemies.find((e) => e.def.boss && e.alive) : null;
+  $('bossBar').style.display = boss ? 'block' : 'none';
+  if (boss) {
+    const frac = isAuthority() ? boss.hp / boss.maxHp : (boss.hpFrac ?? 1);
+    $('bossHp').style.width = (clamp(frac, 0, 1) * 100).toFixed(1) + '%';
+  }
   if (!match.active) return;
   const s = match.settings;
   setText('hp', String(Math.max(0, Math.ceil(state.health))));
@@ -3067,6 +3381,7 @@ function tryFire() {
   state.muzzleT = id === 'railgun' ? 0.08 : 0.05;
   muzzleFlashLight(id, muzzlePos);
   Sound.play(id);
+  stat((s) => { s.shots[id] = (s.shots[id] || 0) + 1; });
 }
 
 // ============================================================
@@ -3263,7 +3578,10 @@ function damagePlayer(amount, dir, knock = 0, attacker = null, weapon = null) {
   state.lastHurt = state.time;
   const save = Math.min(state.armor, Math.ceil(amount * 0.66));
   state.armor -= save;
+  const before = state.health;
   state.health -= amount - save;
+  // Count what was actually lost, not the overkill
+  stat((s) => { s.dmgTaken += save + Math.min(amount - save, Math.max(0, before)); });
   screenFlash('#c00000', 0.15 + amount / 60);
   state.shake = Math.max(state.shake, Math.min(0.3, amount / 80));
   if (state.painSoundT <= 0) { Sound.play('hurt'); state.painSoundT = 0.25; }
@@ -3282,6 +3600,8 @@ function killPlayer(attacker, weapon) {
   const la = net.lastAttacker;
   if (killer === null && la && performance.now() - la.t < 6000) { killer = la.id; w = la.w; }
   if (killer === null) killer = net.myId;
+  stat((s) => { s.deaths++; s.deathsBy[killer === net.myId ? 'self' : killer === ENEMY_ID ? 'enemy' : 'player']++; });
+  statLifeEnd();
   const k = { t: 'kill', victim: net.myId, killer, w: w || 'world' };
   onKill(k);
   netSend(k);
@@ -3355,6 +3675,7 @@ function tryRespawn() {
   if (!state.alive && match.active && respawnWait() <= 0) respawnPlayer();
 }
 function respawnPlayer(quiet = false) {
+  lifeStart = state.time;
   // Pick the spawn point farthest from other players and enemies
   const threats = [];
   for (const r of remotes.values()) if (r.alive && r.hasState) threats.push(r.body.pos);
@@ -3550,7 +3871,7 @@ function makeEnemyCfg(diffKey, count, respawn, types, s = DEFAULT_SETTINGS) {
   return {
     count: count ?? d.count, respawn: respawn ?? d.respawn, types: types || 'all',
     hp: d.hp * (s.enemyHealth ?? 1), dmg: d.dmg * (s.enemyDamage ?? 1), speed: d.speed * (s.enemySpeed ?? 1),
-    fire: d.fire, spread: d.spread, brute: d.brute, sight: d.sight, proj: d.proj,
+    fire: d.fire, spread: d.spread, brute: d.brute, sight: d.sight, proj: d.proj, boss: !!s.boss,
   };
 }
 // Relative weights of the monster types for each "Enemy types" choice
@@ -3578,6 +3899,7 @@ function buildRoster(cfg) {
   exact.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { counts[i]++; left--; } });
   const list = [];
   types.forEach((t, i) => { for (let k = 0; k < counts[i]; k++) list.push(t); });
+  if (cfg.boss) list.push('titan');
   return list;
 }
 function isAuthority() { return net.mode !== 'client'; }
@@ -3629,11 +3951,16 @@ function spawnEnemy(e) {
   const targets = enemyTargets();
   const ok = ENEMY_SPAWNS.filter((s) => targets.every((t) => Math.hypot(s[0] - t.body.pos.x, s[2] - t.body.pos.z) > 20) &&
     !enemies.some((o) => o.alive && Math.hypot(o.body.pos.x - s[0], o.body.pos.z - s[2]) < 2));
-  const s = pick(ok.length ? ok : ENEMY_SPAWNS);
+  const s = e.def.boss && BOSS_SPAWN ? BOSS_SPAWN : pick(ok.length ? ok : ENEMY_SPAWNS);
   e.body.pos.set(s[0], s[1] + (e.def.fly || 0), s[2]);
   e.body.vel.set(0, 0, 0);
   e.fuse = 0;
   e.hp = e.def.oneHit ? 1 : e.def.hp * enemyCfg.hp;
+  // The boss gets tougher with more players
+  if (e.def.boss) e.hp *= 1 + 0.5 * Math.max(0, enemyTargets().length - 1);
+  e.maxHp = e.hp;
+  e.mode = null;
+  e.modeT = 0;
   e.alive = true;
   e.alert = false;
   e.tgt = null;
@@ -3651,6 +3978,7 @@ function spawnEnemy(e) {
 function hurtEnemy(e, dmg, dir, knock) {
   if (!e.alive || dmg <= 0) return;
   state.hitMarkT = 0.12;
+  stat((s) => { s.dmgDealt += Math.min(dmg, e.hp > 0 ? e.hp : dmg); });
   if (isAuthority()) { damageEnemy(e, dmg, dir, knock, net.myId); return; }
   e.flash = 1;
   let h = pendingEnemyHits.get(e.idx);
@@ -3676,7 +4004,7 @@ function damageEnemy(e, amount, dir, knock, attackerId) {
   if (ap) e.lastSeen.copy(ap);
   if (dir && knock) {
     e.body.vel.addScaledVector(dir, knock * e.def.knockScale);
-    if (knock > 3) e.stun = Math.max(e.stun, 0.35);
+    if (knock > 3 && !e.def.boss) e.stun = Math.max(e.stun, 0.35);
   }
   if (e.hp <= 0) killEnemy(e, dir, attackerId);
   else if (e.painT <= 0) { soundAt('enemyPain', e.body.pos); e.painT = 0.3; }
@@ -3685,27 +4013,35 @@ function enemyFragsCount() { return net.mode === 'solo' || match.settings.enemyF
 function killEnemy(e, dir, attackerId) {
   e.alive = false;
   e.model.root.visible = false;
-  e.respawn = enemyCfg.respawn * rnd(0.8, 1.2);
+  e.respawn = e.def.boss ? 1e9 : enemyCfg.respawn * rnd(0.8, 1.2);
   enemyDeathFx(e, dir);
+  if (e.def.boss) stat((s) => { s.bossWins++; });
+  if (e.def.boss && net.mode === 'host') {
+    const who = attackerId !== null && attackerId !== undefined && attackerId !== ENEMY_ID ? nameOf(attackerId) : 'the team';
+    setTimeout(() => hostEndMatch(`🏆 The Titan was defeated! Final blow: ${who}`), 2500);
+  }
   if (e.def.kamikaze) enemyExplode(e.body.pos.clone().setY(e.body.pos.y + 0.8), e.def.kamikaze.dmg * enemyCfg.dmg * 0.6, e.def.kamikaze.radius, e.type);
   if (attackerId === net.myId) creditEnemyKill(e);
   netSend({ t: 'ekill', i: e.idx, by: attackerId ?? ENEMY_ID, d: dir ? [r2(dir.x), r2(dir.z)] : null });
   // Drops only in singleplayer, where item lists never need syncing
   if (net.mode === 'solo' && Math.random() < e.def.drop) {
     const t = Math.random() < 0.35 ? 'health' : pick(['shells', 'bullets', 'rockets', 'slugs']);
-    addItem(t, e.body.pos.x, e.body.pos.y, e.body.pos.z, { temp: true, life: 20 });
+    addItem(t, e.body.pos.x, e.body.pos.y, e.body.pos.z, { temp: true, life: 20, fall: true, vy: 3 });
   }
 }
 function creditEnemyKill(e) {
+  statEnemyKill(e);
   if (!enemyFragsCount()) return;
-  state.frags++;
-  msg(`${e.def.name} fragged!`, '#ff9a6a');
+  state.frags += e.def.frags || 1;
+  statFrags(e.def.frags || 1, false);
+  msg(e.def.boss ? `You killed the ${e.def.name}! +${e.def.frags} frags` : `${e.def.name} fragged!`, e.def.boss ? '#ffd27a' : '#ff9a6a');
   Sound.play('frag');
 }
 function enemyDeathFx(e, dir) {
   const c = e.body.pos.clone();
   c.y += e.def.height * 0.5;
-  gibs(c, [e.def.look.shirt, e.def.look.skin, e.def.look.pants, 0x7a1010], dir, 26);
+  gibs(c, [e.def.look.shirt, e.def.look.skin, e.def.look.pants, 0x7a1010], dir, e.def.boss ? 120 : 26);
+  if (e.def.boss) { explosionFx(c, 9); msg(`The ${e.def.name} has fallen!`, '#ffd27a'); }
   soundAt('enemyDie', e.body.pos);
 }
 // Explosion caused by an enemy: hurts the local player and other players
@@ -3749,6 +4085,18 @@ function updateEnemy(e, dt) {
     return;
   }
   const b = e.body, d = e.def, cfg = enemyCfg;
+  let ranged = d.ranged, melee = d.melee;
+  if (d.boss) {
+    // Cycle between attack styles
+    e.modeT -= dt;
+    if (e.modeT <= 0 || !e.mode) {
+      e.mode = pick(['shoot', 'rockets', 'charge'].filter((m) => m !== e.mode));
+      e.modeT = rnd(5, 8);
+      soundAt('enemyDie', b.pos);
+    }
+    ranged = e.mode !== 'charge';
+    melee = e.mode === 'charge';
+  }
   e.think -= dt; e.fireT -= dt; e.meleeT -= dt; e.painT -= dt; e.strafeT -= dt; e.wanderT -= dt;
   e.attackAnim = Math.max(0, e.attackAnim - dt);
 
@@ -3785,7 +4133,7 @@ function updateEnemy(e, dt) {
   // Movement direction
   let mx = 0, mz = 0;
   if (e.alert && e.los) {
-    if (d.ranged) {
+    if (ranged) {
       if (e.strafeT <= 0) { e.strafeDir = Math.random() < 0.5 ? -1 : 1; e.strafeT = rnd(0.8, 2); }
       const approach = dist > d.keepDist + 3 ? 1 : dist < d.keepDist - 4 ? -1 : 0;
       mx = _toP.x * approach - _toP.z * e.strafeDir * 0.8;
@@ -3852,8 +4200,9 @@ function updateEnemy(e, dt) {
 
   // Attacks
   if (tgt && e.los) {
-    if (d.ranged && e.fireT <= 0 && dist < cfg.sight) {
-      e.fireT = rnd(...d.fireCd) * cfg.fire;
+    if (ranged && e.fireT <= 0 && dist < cfg.sight * (d.boss ? 2 : 1)) {
+      const bossRockets = d.boss && e.mode === 'rockets';
+      e.fireT = rnd(...d.fireCd) * cfg.fire * (bossRockets ? 1.6 : 1);
       e.attackAnim = 0.25;
       _eEye.set(b.pos.x, b.pos.y + d.height * 0.78, b.pos.z);
       _pChest.set(tgt.body.pos.x, tgt.body.pos.y + 1.1, tgt.body.pos.z);
@@ -3872,18 +4221,25 @@ function updateEnemy(e, dt) {
       } else {
         dir = _pChest.clone().sub(_eEye).normalize();
         spreadDir(dir, cfg.spread, dir);
-        speed = d.projSpeed * cfg.proj;
+        speed = d.projSpeed * cfg.proj * (bossRockets ? 0.8 : 1);
       }
-      const color = d.projColor || 0xff7a2a;
-      const splash = d.projSplash ? d.projSplash * cfg.dmg : 0;
-      spawnProjectile({
-        origin: _eEye, dir, speed, owner: 'enemy', ownerId: ENEMY_ID, weapon: e.type, dmg: d.dmg * cfg.dmg,
-        splash, radius: d.projRadius || 0, knock: 0, color, kind: d.lob ? 'rocket' : 'bolt', gravity: grav,
-      });
-      soundAt(d.lob ? 'rocket' : 'enemyShoot', b.pos);
-      if (net.mode === 'host') {
-        netSend({ t: 'efx', s: v3a(_eEye), d: [r3(dir.x), r3(dir.y), r3(dir.z)], v: r2(speed), c: color, g: r2(grav), sp: d.projRadius || 0 });
+      const color = bossRockets ? 0xff6622 : d.projColor || 0xff7a2a;
+      const splash = bossRockets ? 55 * cfg.dmg : d.projSplash ? d.projSplash * cfg.dmg : 0;
+      const radius = bossRockets ? 4 : d.projRadius || 0;
+      const rocketLike = d.lob || bossRockets;
+      // The boss fires a spread of three bolts when shooting
+      const shots = d.boss && !bossRockets ? 3 : 1;
+      for (let k = 0; k < shots; k++) {
+        const sd = k === 0 ? dir : spreadDir(dir, 0.08, new V3());
+        spawnProjectile({
+          origin: _eEye, dir: sd, speed, owner: 'enemy', ownerId: ENEMY_ID, weapon: e.type, dmg: d.dmg * cfg.dmg,
+          splash, radius, knock: 0, color, kind: rocketLike ? 'rocket' : 'bolt', gravity: grav,
+        });
+        if (net.mode === 'host') {
+          netSend({ t: 'efx', s: v3a(_eEye), d: [r3(sd.x), r3(sd.y), r3(sd.z)], v: r2(speed), c: color, g: r2(grav), sp: radius });
+        }
       }
+      soundAt(rocketLike ? 'rocket' : 'enemyShoot', b.pos);
     }
     if (d.kamikaze) {
       // Light the fuse when close, explode when it runs out
@@ -3891,20 +4247,21 @@ function updateEnemy(e, dt) {
       const dy = Math.abs(tgt.body.pos.y - b.pos.y);
       if (!e.fuse && dist < k.radius * 0.45 && dy < 2) { e.fuse = k.fuse; soundAt('pad', b.pos); }
     }
-    if (d.melee) {
+    if (melee) {
       const dy = Math.abs(tgt.body.pos.y - b.pos.y);
-      if (dist < d.radius + CFG.radius + 0.9 && dy < 1.5 && e.meleeT <= 0) {
+      if (dist < d.radius + CFG.radius + (d.boss ? 1.8 : 0.9) && dy < (d.boss ? d.height : 1.5) && e.meleeT <= 0) {
         e.meleeT = d.meleeCd * cfg.fire;
         e.attackAnim = 0.3;
         const dir = new V3(_toP.x, 0.35, _toP.z).normalize();
         const dmg = d.meleeDmg * cfg.dmg;
-        if (tgt.remote) enemyHitRemote(tgt.remote, dmg, dir, 7, e.type);
-        else damagePlayer(dmg, dir, 7, ENEMY_ID, e.type);
+        const kb = d.boss ? 16 : 7;
+        if (tgt.remote) enemyHitRemote(tgt.remote, dmg, dir, kb, e.type);
+        else damagePlayer(dmg, dir, kb, ENEMY_ID, e.type);
         soundAt('punch', b.pos);
-      } else if (b.onGround && dist > 5 && dist < 10 && e.stun <= 0 && Math.random() < dt * 0.8 * cfg.speed &&
+      } else if (b.onGround && dist > 5 && dist < (d.boss ? 22 : 10) && e.stun <= 0 && Math.random() < dt * 0.8 * cfg.speed &&
         !dangerAhead(b.pos.x + _toP.x * 6, b.pos.z + _toP.z * 6, b.pos.y) && !dangerAhead(b.pos.x + _toP.x * 3, b.pos.z + _toP.z * 3, b.pos.y)) {
         // Leap toward the target
-        b.vel.set(_toP.x * 11, 8.5, _toP.z * 11);
+        b.vel.set(_toP.x * (d.boss ? 15 : 11), d.boss ? 11 : 8.5, _toP.z * (d.boss ? 15 : 11));
         b.onGround = false;
         e.stun = 0.8;
       }
@@ -3957,7 +4314,8 @@ function separateEnemies() {
 function enemySnapshot() {
   return enemies.map((e) => (e.alive
     ? [1, r2(e.body.pos.x), r2(e.body.pos.y), r2(e.body.pos.z), r2(e.facing),
-      (e.alert && e.los && e.def.ranged ? 1 : 0) | (e.attackAnim > 0 ? 2 : 0) | (e.flash > 0.5 ? 4 : 0)]
+      (e.alert && e.los && e.def.ranged && e.mode !== 'charge' ? 1 : 0) | (e.attackAnim > 0 ? 2 : 0) | (e.flash > 0.5 ? 4 : 0),
+      ...(e.def.boss ? [r2(e.hp / e.maxHp)] : [])]
     : [0]));
 }
 function applyEnemySnapshot(list) {
@@ -3979,6 +4337,7 @@ function applyEnemySnapshot(list) {
     e.dispAim = !!(s[5] & 1);
     if (s[5] & 2) e.attackAnim = 0.25;
     if (s[5] & 4) e.flash = 1;
+    if (s.length > 6) e.hpFrac = s[6];
     if (!was) {
       e.alive = true;
       e.body.pos.copy(e.dispTarget);
@@ -4005,8 +4364,8 @@ function animateEnemies(dt) {
     e.walkPhase += hs * dt * 1.8;
     r.position.copy(b.pos);
     r.rotation.y = e.facing;
-    const aim = authority ? e.def.ranged && e.alert && e.los : e.dispAim;
-    animateHumanoid(e.model, hs, authority ? b.onGround : Math.abs(vel.y) < 1, e.walkPhase, aim, 0, e.def.melee ? e.attackAnim : 0, dt);
+    const aim = authority ? e.def.ranged && e.alert && e.los && e.mode !== 'charge' : e.dispAim;
+    animateHumanoid(e.model, hs, authority ? b.onGround : Math.abs(vel.y) < 1, e.walkPhase, aim, 0, e.def.melee && !aim ? e.attackAnim : 0, dt);
     if (e.model.wings) for (const w of e.model.wings) w.rotation.z = Math.sin(state.time * 18 + e.idx) * 0.4;
     e.flash = Math.max(0, e.flash - dt * 6);
     for (const m of e.model.mats) if (m.emissive) m.emissive.setScalar(e.flash * 0.8);
@@ -4017,6 +4376,7 @@ function animateEnemies(dt) {
 // Match flow (shared by singleplayer and multiplayer)
 // ============================================================
 function startMatch(p) {
+  statMatchEnd();
   match.settings = p.solo ? { ...p.settings } : sanitizeSettings(p.settings);
   match.hardcore = !!p.hardcore;
   match.over = false;
@@ -4040,9 +4400,11 @@ function startMatch(p) {
   deathScreen.style.display = 'none';
   scoreboardEl.style.display = 'none';
   Sound.play('start');
+  statMatchStart();
   msg(`${mapById(p.map).name}${net.mode === 'solo' ? ' · ' + (match.hardcore ? 'HARDCORE — one life!' : DIFFICULTIES[match.difficulty].label) : ''} — fight!`, match.hardcore ? '#ff8a7a' : '#ffd27a');
 }
 function stopMatch() {
+  statMatchEnd();
   match.active = false;
   match.over = false;
   clearEnemies();
@@ -4217,7 +4579,7 @@ function startHost(fixedCode = null) {
     // Public rooms always use their preset
     const sv = publicServer(net.publicN);
     lobby.settings = sanitizeSettings({ ...DEFAULT_SETTINGS, ...sv.settings, mapMode: 'host' });
-    lobby.hostMap = pick(PUBLIC_ROTATION); // random map when the server opens
+    lobby.hostMap = sv.map || pick(PUBLIC_ROTATION); // random map when the server opens (unless fixed)
   }
   lobbyChanged();
   if (USE_LOCAL_NET) {
@@ -4402,7 +4764,7 @@ function onMatchEnd(result) {
       if (net.mode !== 'host' || net.publicN !== n || match.active) return;
       // A different random map every match
       const others = PUBLIC_ROTATION.filter((id) => id !== lobby.hostMap);
-      lobby.hostMap = pick(others.length ? others : PUBLIC_ROTATION);
+      lobby.hostMap = publicServer(n).map || pick(others.length ? others : PUBLIC_ROTATION);
       hostStartMatch();
       enterMatchUI('Next match started! Click Resume to play');
     }, 10000);
@@ -4466,7 +4828,7 @@ function checkMatchEnd(dt) {
   const s = match.settings;
   if (s.timeLimit) match.timeLeft -= dt;
   if (net.mode !== 'host') return;
-  if (s.timeLimit && match.timeLeft <= 0) { hostEndMatch(); return; }
+  if (s.timeLimit && match.timeLeft <= 0) { hostEndMatch(enemies.some((e) => e.def.boss && e.alive) ? 'Time is up — the Titan survived' : ''); return; }
   if (s.fragLimit) {
     let top = state.frags;
     for (const r of remotes.values()) top = Math.max(top, r.frags);
@@ -4588,6 +4950,7 @@ function clientReceive(m) {
       const e = enemies[m.i];
       if (!e) break;
       if (e.alive) {
+        if (e.def.boss) stat((s) => { s.bossWins++; });
         e.alive = false;
         e.model.root.visible = false;
         enemyDeathFx(e, m.d ? new V3(m.d[0], 0, m.d[1]) : null);
@@ -4685,6 +5048,7 @@ function receiveHit(m) {
 function hitRemote(r, dmg, dir, knock, weapon) {
   if (!r.alive || dmg <= 0) return;
   state.hitMarkT = 0.12;
+  stat((s) => { s.dmgDealt += dmg; });
   let h = pendingHits.get(r.id);
   if (!h) { h = { dmg: 0, k: new V3(), w: weapon }; pendingHits.set(r.id, h); }
   h.dmg += dmg;
@@ -4707,7 +5071,7 @@ function onKill(m) {
     const wName = WEAPONS[m.w] ? WEAPONS[m.w].name : m.w === 'telefrag' ? 'telefrag' : null;
     const mine = m.killer === net.myId;
     msg(`${nameOf(m.killer)} fragged ${nameOf(m.victim)}${wName ? ' (' + wName + ')' : ''}`, mine ? '#ffd27a' : '#ff9a6a');
-    if (mine) { state.frags++; Sound.play('frag'); }
+    if (mine) { state.frags++; statFrags(1, true); Sound.play('frag'); }
   }
   const r = remotes.get(m.victim);
   if (r && r.hasState) {
@@ -4916,7 +5280,7 @@ function addItem(type, x, y, z, opts = {}) {
   disc.scale.setScalar(1.6);
   group.add(disc);
   scene.add(group);
-  items.push({ type, def, group, spin, active: true, timer: 0, reqT: 0, temp: !!opts.temp, life: opts.life || 0, phase: Math.random() * 6 });
+  items.push({ type, def, group, spin, active: true, timer: 0, reqT: 0, temp: !!opts.temp, life: opts.life || 0, phase: Math.random() * 6, falling: !!opts.fall, vy: opts.vy || 0 });
 }
 function clearItems() {
   for (const it of items) scene.remove(it.group);
@@ -4938,6 +5302,7 @@ function canPickup(it) {
 }
 function applyPickup(it) {
   const def = it.def, s = match.settings;
+  stat((st) => { st.pickups[it.type === 'mega' ? 'mega' : def.kind]++; });
   switch (def.kind) {
     case 'weapon': {
       const id = def.weapon, w = WEAPONS[id];
@@ -4987,6 +5352,27 @@ function takeItem(i) {
   setItemActive(i, false);
   if (net.mode === 'host') hostBroadcast({ t: 'item', i, a: 0 });
 }
+// Dropped items fall until they land on the floor or a ledge.
+// Returns false if the item fell into lava and is gone.
+function dropFall(it, dt) {
+  const p = it.group.position;
+  it.vy -= phys.gravity * dt;
+  let ground = 0;
+  for (const c of colliders) {
+    if (p.x > c.min.x && p.x < c.max.x && p.z > c.min.z && p.z < c.max.z && c.max.y <= p.y + 0.05 && c.max.y > ground) ground = c.max.y;
+  }
+  p.y += it.vy * dt;
+  if (p.y <= ground) {
+    p.y = ground;
+    it.vy = 0;
+    it.falling = false;
+    if (inLava(p)) {
+      particle(p.x, p.y + 0.2, p.z, 0, 2, 0, 0xff6a1a, 0.2, 0.6, 0, 1);
+      return false;
+    }
+  }
+  return true;
+}
 function updateItems(dt) {
   const authority = isAuthority();
   const now = performance.now();
@@ -4995,6 +5381,7 @@ function updateItems(dt) {
     if (it.temp) {
       it.life -= dt;
       if (it.life <= 0) { scene.remove(it.group); items.splice(i, 1); continue; }
+      if (it.falling && !dropFall(it, dt)) { scene.remove(it.group); items.splice(i, 1); continue; }
     }
     if (!it.active) {
       if (authority) {
@@ -5068,10 +5455,11 @@ function updateCamera(dt) {
     return;
   }
   const alive = state.alive;
-  const wantFP = view === 'first' && alive;
+  const scoped = isScoped();
+  const wantFP = (view === 'first' || scoped) && alive;
   const target = wantFP ? 0 : alive ? CFG.tpDistance : 5.5;
   camDist += (target - camDist) * (1 - Math.exp(-10 * dt));
-  if (Math.abs(camDist - target) < 0.01) camDist = target;
+  if (Math.abs(camDist - target) < 0.01 || scoped) camDist = target;
 
   let yaw = player.yaw, pitch = player.pitch;
   if (!alive) {
@@ -5115,8 +5503,8 @@ function updateCamera(dt) {
 
   character.root.visible = camDist > 0.6 || !alive;
 
-  const fovTarget = state.sprinting && hs > 1 ? CFG.fovSprint : CFG.fovNormal;
-  camera.fov += (fovTarget - camera.fov) * (1 - Math.exp(-8 * dt));
+  const fovTarget = scoped ? 20 : state.sprinting && hs > 1 ? CFG.fovSprint : CFG.fovNormal;
+  camera.fov += (fovTarget - camera.fov) * (1 - Math.exp(-(scoped ? 18 : 8) * dt));
   camera.updateProjectionMatrix();
 
   sun.position.copy(player.pos).add(SUN_OFFSET);
@@ -5158,6 +5546,9 @@ function updateViewModel(dt) {
 function fixedStep(dt) {
   state.time += dt;
   if (match.hardcore && state.alive) match.survived += dt;
+  stats.playTime += dt;
+  if (state.alive) stats.distance += Math.hypot(player.vel.x, player.vel.z) * dt;
+  statsDirty = true;
   updatePlayer(dt);
   if (isAuthority()) {
     for (const e of enemies) updateEnemy(e, dt);
@@ -5213,7 +5604,7 @@ function frame() {
 
   renderer.clear();
   renderer.render(scene, camera);
-  if (match.active && camDist < 0.3 && state.alive) {
+  if (match.active && camDist < 0.3 && state.alive && !isScoped()) {
     renderer.clearDepth();
     renderer.render(viewScene, viewCam);
   }
