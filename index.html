@@ -51,6 +51,7 @@
   .serverRow .nm { font-weight: 700; font-size: 16px; }
   .serverRow .ds { font-size: 13px; color: #c9b8a6; }
   .serverRow .st { font-size: 13px; color: #9fd4ff; margin-top: 3px; }
+  .newTag { font-size: 11px; background: #b8741f; color: #fff; border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; letter-spacing: 1px; }
   .soon { font-size: 34px; font-weight: 900; letter-spacing: 3px; color: #e8a33a; text-transform: uppercase; text-shadow: 0 3px 0 #000; margin: 40px 0 36px; }
   .panel button.small { font-size: 13px; padding: 6px 12px; }
   .statTiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 4px; }
@@ -135,11 +136,14 @@
   #bossBar { position: fixed; left: 50%; top: 56px; transform: translateX(-50%); width: min(520px, 70vw); display: none; pointer-events: none; z-index: 6; text-align: center; }
   #bossBar .bn { color: #ffb070; font-weight: 900; letter-spacing: 3px; text-shadow: 0 2px 0 #000; margin-bottom: 4px; }
   #bossBar .bb { height: 14px; background: rgba(0,0,0,.6); border: 2px solid #5a1a10; border-radius: 7px; overflow: hidden; }
+  #modeHud { position: fixed; right: 14px; top: 92px; text-align: right; font-weight: 800; font-size: 17px; color: #fff; text-shadow: 0 2px 2px #000; display: none; line-height: 1.3; }
+  #modeHud small { font-size: 13px; color: #d9c8b6; font-weight: 700; }
   #bossMods { margin-top: 3px; font-size: 12px; color: #d9b89a; text-shadow: 0 1px 0 #000; letter-spacing: .5px; }
   #bossEvent { margin-top: 8px; font-size: 19px; font-weight: 900; color: #ffcf6a; text-shadow: 0 2px 0 #000, 0 0 14px rgba(255,120,40,.7); opacity: 0; transition: opacity .3s; }
   #bossEvent.ev5 { color: #7dff9a; text-shadow: 0 2px 0 #000, 0 0 14px rgba(60,255,120,.7); }
   #bossEvent.ev4 { color: #ff6a5a; }
   #bossEvent.ev6 { color: #ffaa33; }
+  #bossEvent.ev7 { color: #e080ff; text-shadow: 0 2px 0 #000, 0 0 16px rgba(200,80,255,.9); }
   #bossEvent.ev0 { color: #c9b8a6; font-size: 15px; }
   #bossHp { height: 100%; width: 100%; background: linear-gradient(90deg, #ff3a1a, #ffaa33); }
   .hud { display: none; }
@@ -291,8 +295,13 @@
 
     <section id="scrCustom" class="scr">
       <h2 style="font-size:20px">Custom servers</h2>
-      <div class="soon">Coming soon</div>
-      <div class="row"><button id="btnCustomBack" class="primary">Back</button></div>
+      <div class="desc">One server per map. The first player to join is the host and sets everything up — including the Advanced settings and beta monsters that only exist here.</div>
+      <div id="customList"></div>
+      <div class="status" id="customStatus"></div>
+      <div class="row">
+        <button id="btnCustomBack">Back</button>
+        <button id="btnCustomRefresh">Refresh</button>
+      </div>
     </section>
 
     <section id="scrStats" class="scr">
@@ -354,6 +363,7 @@
   <div id="matchInfo"></div>
   <div id="speed">0.0 m/s</div>
 </div>
+<div id="modeHud" class="hud"></div>
 <div id="topRight" class="hud"><div id="timer"></div><span id="frags">0</span> FRAGS<small id="deaths">0 deaths</small></div>
 <div id="msgs"></div>
 <div id="scoreboard"></div>
@@ -477,8 +487,9 @@ const DIFF_KEYS = Object.keys(DIFFICULTIES);
 const SETTINGS_SCHEMA = [
   { type: 'header', label: 'Match' },
   { key: 'mapMode', label: 'Map choice', type: 'select', options: [['host', 'Host picks'], ['vote', 'Players vote']] },
-  { key: 'fragLimit', label: 'Frag limit', type: 'range', min: 0, max: 100, step: 5, fmt: (v) => (v ? String(v) : 'None') },
+  { key: 'fragLimit', label: 'Frag limit', type: 'range', min: 0, max: 1000, step: 5, fmt: (v) => (v ? String(v) : 'None') },
   { key: 'timeLimit', label: 'Time limit', type: 'range', min: 0, max: 30, step: 1, fmt: (v) => (v ? v + ' min' : 'None') },
+  { key: 'hardcore', label: 'Hardcore: one life per match', type: 'toggle' },
   { key: 'respawnDelay', label: 'Respawn delay', type: 'range', min: 0, max: 10, step: 1, fmt: (v) => v + ' s' },
 
   { type: 'header', label: 'Enemies' },
@@ -493,8 +504,10 @@ const SETTINGS_SCHEMA = [
   { key: 'enemyHealth', label: 'Enemy health', type: 'range', min: 0.25, max: 4, step: 0.25, dep: 'enemies', fmt: (v) => '×' + v },
   { key: 'enemyDamage', label: 'Enemy damage', type: 'range', min: 0, max: 4, step: 0.25, dep: 'enemies', fmt: (v) => '×' + v },
   { key: 'enemySpeed', label: 'Enemy speed', type: 'range', min: 0.5, max: 2, step: 0.1, dep: 'enemies', fmt: (v) => '×' + v.toFixed(1) },
+  { key: 'enemyFireRate', label: 'Enemy fire rate', type: 'range', min: 0.25, max: 4, step: 0.25, dep: 'enemies', fmt: (v) => '×' + v },
   { key: 'enemyFrags', label: 'Enemy kills give frags', type: 'toggle', dep: 'enemies' },
   { key: 'boss', label: 'Boss: the giant Titan', type: 'toggle', dep: 'enemies' },
+  { key: 'bossKill', label: 'When the Titan dies', type: 'select', dep: 'boss', options: [['respawn', 'It comes back after 60 s'], ['stay', 'It stays dead'], ['end', 'The match ends']] },
 
   { type: 'header', label: 'Player' },
   { key: 'maxHealth', label: 'Max health', type: 'range', min: 50, max: 500, step: 25 },
@@ -523,16 +536,58 @@ const SETTINGS_SCHEMA = [
   { key: 'weaponPickups', label: 'Weapon pickups', type: 'toggle' },
   { key: 'healthPickups', label: 'Health & armor pickups', type: 'toggle' },
   { key: 'itemRespawn', label: 'Item respawn time', type: 'range', min: 0.25, max: 3, step: 0.25, fmt: (v) => '×' + v },
+
+  // Advanced settings: only shown and used on custom servers
+  { type: 'header', label: 'Advanced · game mode', custom: true },
+  { key: 'gameMode', label: 'Game mode', type: 'select', custom: true, options: [
+    ['ffa', 'Free for all'], ['tdm', 'Team deathmatch'], ['lms', 'Last man standing'], ['gungame', 'Gun game'], ['koth', 'King of the hill'], ['instagib', 'Instagib'],
+  ] },
+  { key: 'lmsLives', label: 'Last man standing: lives', type: 'range', min: 1, max: 10, step: 1, custom: true },
+  { key: 'ggKills', label: 'Gun game: kills per weapon', type: 'range', min: 1, max: 5, step: 1, custom: true },
+  { key: 'kothTarget', label: 'King of the hill: seconds to win', type: 'range', min: 30, max: 300, step: 10, custom: true, fmt: (v) => v + ' s' },
+  { type: 'header', label: 'Advanced · weapons on the map', custom: true },
+  { key: 'wShotgun', label: 'Shotgun', type: 'toggle', custom: true },
+  { key: 'wMachinegun', label: 'Machinegun', type: 'toggle', custom: true },
+  { key: 'wRocket', label: 'Rocket Launcher', type: 'toggle', custom: true },
+  { key: 'wRailgun', label: 'Railgun', type: 'toggle', custom: true },
+  { key: 'wGrenade', label: 'Grenade Launcher', type: 'toggle', custom: true },
+  { type: 'header', label: 'Advanced · items & drops', custom: true },
+  { key: 'ammoPickups', label: 'Ammo pickups', type: 'toggle', custom: true },
+  { key: 'megaPickups', label: 'Mega health', type: 'toggle', custom: true },
+  { key: 'armorPickups', label: 'Armor pickups', type: 'toggle', custom: true },
+  { key: 'monsterDrops', label: 'Monsters drop items', type: 'toggle', custom: true },
+  { key: 'playerDrops', label: 'Players drop their weapon on death', type: 'toggle', custom: true },
+  { type: 'header', label: 'Advanced · beta monsters (custom servers only)', custom: true },
+  { key: 'bSniper', label: 'Sniper', type: 'toggle', dep: 'enemies', custom: true },
+  { key: 'bKnight', label: 'Shield Knight', type: 'toggle', dep: 'enemies', custom: true },
+  { key: 'bBlinker', label: 'Blinker', type: 'toggle', dep: 'enemies', custom: true },
+  { key: 'bMedic', label: 'Medic', type: 'toggle', dep: 'enemies', custom: true },
+  { key: 'bFrost', label: 'Frostbite', type: 'toggle', dep: 'enemies', custom: true },
+  { key: 'betaCount', label: 'Of each beta monster', type: 'range', min: 1, max: 5, step: 1, dep: 'enemies', custom: true },
 ];
+// Weapon toggle for each weapon that can be switched off on custom servers
+const WEAPON_TOGGLES = { shotgun: 'wShotgun', machinegun: 'wMachinegun', rocket: 'wRocket', railgun: 'wRailgun', grenade: 'wGrenade' };
+const BETA_TOGGLES = { sniper: 'bSniper', knight: 'bKnight', blinker: 'bBlinker', medic: 'bMedic', frost: 'bFrost' };
+const CUSTOM_KEYS = SETTINGS_SCHEMA.filter((f) => f.custom && f.key).map((f) => f.key);
+const weaponAllowed = (id, s = match.settings) => !WEAPON_TOGGLES[id] || s[WEAPON_TOGGLES[id]] !== false;
 const DEFAULT_SETTINGS = {
-  mapMode: 'host', fragLimit: 20, timeLimit: 10, respawnDelay: 1,
+  mapMode: 'host', fragLimit: 20, timeLimit: 10, respawnDelay: 1, hardcore: false,
   enemies: false, enemyCount: 6, enemyRespawn: 8, enemyDifficulty: 'medium', enemyTypes: 'all',
-  enemyHealth: 1, enemyDamage: 1, enemySpeed: 1, enemyFrags: true, boss: false,
+  enemyHealth: 1, enemyDamage: 1, enemySpeed: 1, enemyFireRate: 1, enemyFrags: true, boss: false, bossKill: 'respawn',
   maxHealth: 100, healthRegen: 0, startArmor: 0, maxArmor: 200, speed: 1, jumpHeight: 1, airControl: 1, gravity: 1,
   infiniteStamina: false, staminaRate: 1, fallDamage: false,
   startWeapons: 'blaster', infiniteAmmo: false, dmgMul: 1, fireRate: 1, projSpeed: 1, rocketKnock: 1, grenadePower: 1, selfDamage: false,
   weaponPickups: true, healthPickups: true, itemRespawn: 1,
+  wShotgun: true, wMachinegun: true, wRocket: true, wRailgun: true, wGrenade: true,
+  ammoPickups: true, megaPickups: true, armorPickups: true, monsterDrops: true, playerDrops: false,
+  bSniper: false, bKnight: false, bBlinker: false, bMedic: false, bFrost: false, betaCount: 2,
+  gameMode: 'ffa', lmsLives: 3, ggKills: 2, kothTarget: 90,
 };
+// Outside custom servers the advanced settings always use their defaults
+function stripCustom(s) {
+  for (const k of CUSTOM_KEYS) s[k] = DEFAULT_SETTINGS[k];
+  return s;
+}
 function sanitizeWith(src, schema, defaults) {
   const out = { ...defaults };
   for (const f of schema) {
@@ -585,6 +640,62 @@ ENEMY_TYPES.titan = {
     m.root.add(core);
   },
 };
+// ---------- BETA monsters: only on custom servers (Advanced settings) ----------
+Object.assign(ENEMY_TYPES, {
+  // Keeps far away, aims for a second (glowing eye), then fires one very fast, hard-hitting shot
+  sniper: {
+    name: 'Sniper', beta: true, hp: 70, speed: 3.4, radius: 0.4, height: 1.8, scale: [0.9, 1.05, 0.9],
+    look: { skin: 0x5a6a50, shirt: 0x3a4a30, pants: 0x2a3322, eye: 0xff2020, pads: 0x4a5a3a },
+    ranged: true, gun: 'railgun', projSpeed: 140, projColor: 0xff3030, dmg: 40, fireCd: [3.2, 4.2], windup: 1.1,
+    keepDist: 36, knockScale: 1, drop: 0.6, sightMul: 1.8,
+  },
+  // Big shield in front: shots from the front do almost nothing, hit it from the side or behind
+  knight: {
+    name: 'Shield Knight', beta: true, hp: 180, speed: 4.4, radius: 0.5, height: 2.0, scale: [1.15, 1.1, 1.15],
+    look: { skin: 0x8a8f96, shirt: 0x5a6068, pants: 0x3a3f44, eye: 0x66ccff, pads: 0xa0a8b0 },
+    melee: true, meleeDmg: 30, meleeCd: 1.0, shield: 0.12, knockScale: 0.3, drop: 0.6,
+    decorate(m) {
+      const mat = new THREE.MeshStandardMaterial({ color: 0x8a96a8, roughness: 0.3, metalness: 0.8, emissive: 0x223344 });
+      m.mats.push(mat);
+      const sh = new THREE.Mesh(unitBox, mat);
+      sh.scale.set(1.0, 1.3, 0.1);
+      sh.position.set(0, 1.1, 0.5);
+      m.root.add(sh);
+    },
+  },
+  // Teleports next to a player every few seconds and fires a quick spread
+  blinker: {
+    name: 'Blinker', beta: true, hp: 60, speed: 4, radius: 0.35, height: 1.6, scale: [0.8, 0.85, 0.8],
+    look: { skin: 0x9a60d0, shirt: 0x4a2a70, pants: 0x2a1a40, eye: 0xffffff, pads: 0xc080ff },
+    ranged: true, projSpeed: 28, projColor: 0xd080ff, dmg: 8, fireCd: [9, 9], blink: [3.5, 5.5],
+    keepDist: 8, knockScale: 1.2, drop: 0.5,
+  },
+  // Heals other monsters around it and runs away from players
+  medic: {
+    name: 'Medic', beta: true, hp: 90, speed: 4.6, radius: 0.4, height: 1.8, scale: [0.95, 0.95, 0.95],
+    look: { skin: 0xe8e0d0, shirt: 0xeeeeee, pants: 0x9a9a9a, eye: 0x33ff66, pads: 0xdd2222 },
+    heal: { radius: 14, amount: 0.12, every: 1.5 }, flee: 22, knockScale: 1, drop: 1,
+    decorate(m) {
+      const mat = new THREE.MeshStandardMaterial({ color: 0xdd2222, emissive: 0x880000 });
+      m.mats.push(mat);
+      for (const [w, h] of [[0.34, 0.1], [0.1, 0.34]]) {
+        const c = new THREE.Mesh(unitBox, mat);
+        c.scale.set(w, h, 0.04);
+        c.position.set(0, 1.35, 0.26);
+        m.root.add(c);
+      }
+    },
+  },
+  // Ice bolts that slow you down for a few seconds
+  frost: {
+    name: 'Frostbite', beta: true, hp: 80, speed: 3.9, radius: 0.4, height: 1.8, scale: [0.95, 0.95, 0.95],
+    look: { skin: 0x9ad8ff, shirt: 0x3a7ab0, pants: 0x1e3a5a, eye: 0xffffff, pads: 0xc8f0ff },
+    ranged: true, projSpeed: 26, projColor: 0x88eeff, dmg: 8, fireCd: [1.2, 2], keepDist: 13, knockScale: 1, drop: 0.5,
+    slow: 2.5,
+  },
+});
+// ---------- end BETA ----------
+
 // Minigunner: one per round on Insane and Nightmare
 ENEMY_TYPES.minigunner = {
   name: 'Minigunner', hp: 660, frags: 5, once: true, minigun: true,
@@ -656,13 +767,13 @@ Object.assign(ENEMY_TYPES, {
 
 // Singleplayer settings: the difficulty buttons set the enemy strength, and
 // 0 for enemy count / respawn means "use the difficulty's value"
-const MP_ONLY_SETTINGS = new Set(['mapMode', 'fragLimit', 'timeLimit', 'enemyDifficulty', 'enemyFrags', 'boss']);
+const MP_ONLY_SETTINGS = new Set(['mapMode', 'fragLimit', 'timeLimit', 'enemyDifficulty', 'enemyFrags', 'boss', 'bossKill', 'hardcore']);
 const SP_OVERRIDES = {
   enemyCount: { key: 'enemyCount', label: 'Max enemies', type: 'range', min: 0, max: 25, step: 1, dep: 'enemies', fmt: (v) => (v ? String(v) : 'Auto') },
   enemyRespawn: { key: 'enemyRespawn', label: 'Enemy respawn time', type: 'range', min: 0, max: 30, step: 1, dep: 'enemies', fmt: (v) => (v ? v + ' s' : 'Auto') },
 };
 const SP_SCHEMA = SETTINGS_SCHEMA
-  .filter((f) => !MP_ONLY_SETTINGS.has(f.key))
+  .filter((f) => !MP_ONLY_SETTINGS.has(f.key) && !f.custom)
   .map((f) => SP_OVERRIDES[f.key] || f)
   .filter((f, i, a) => f.type !== 'header' || (a[i + 1] && a[i + 1].type !== 'header'));
 const SP_DEFAULTS = { ...DEFAULT_SETTINGS, enemies: true, enemyCount: 0, enemyRespawn: 0, fragLimit: 0, timeLimit: 0 };
@@ -690,8 +801,12 @@ const PUBLIC_SERVERS = [
     settings: { fragLimit: 30, timeLimit: 8, startWeapons: 'all', infiniteAmmo: true, gravity: 0.6, jumpHeight: 1.5, rocketKnock: 2, grenadePower: 1.5, healthRegen: 5, selfDamage: false } },
   { n: 4, name: 'Server 4 · Boss Fight', desc: 'Team up against the giant Titan in the Colosseum while normal monsters keep coming. Kill it within 15 minutes.',
     map: 'colosseum',
-    settings: { fragLimit: 0, timeLimit: 15, enemies: true, boss: true, enemyDifficulty: 'medium', enemyTypes: 'all', enemyCount: 8, enemyRespawn: 8, enemyFrags: true, maxHealth: 150, healthRegen: 2, respawnDelay: 3 } },
+    settings: { fragLimit: 0, timeLimit: 15, enemies: true, boss: true, bossKill: 'end', enemyDifficulty: 'medium', enemyTypes: 'all', enemyCount: 8, enemyRespawn: 8, enemyFrags: true, maxHealth: 150, healthRegen: 2, respawnDelay: 3 } },
 ];
+
+// Custom servers: one room per map. The first player in is the host and sets everything up.
+const CUSTOM_MAPS = ['box', 'city', 'keep', 'towers', 'canyon', 'warehouse', 'spire', 'void'];
+const CUSTOM_SERVERS = CUSTOM_MAPS.map((map, i) => ({ n: 11 + i, custom: true, map }));
 
 // Values that change with the match settings
 const phys = { gravity: CFG.gravity, walk: CFG.walkSpeed, sprint: CFG.sprintSpeed, jump: CFG.jumpSpeed, airAccel: CFG.accelAir };
@@ -937,6 +1052,9 @@ const MAT_DEFS = {
   contBlue:  { map: texContainer, tile: 2.5, rough: 0.6, metal: 0.3, color: 0x2e5fa8 },
   contGreen: { map: texContainer, tile: 2.5, rough: 0.6, metal: 0.3, color: 0x3d8a4a },
   marble:    { map: brickTex('#c9c2b2', '#8f887a'), tile: 4, rough: 0.7, metal: 0 },
+  gray:      { map: texConcrete, tile: 4, rough: 0.85, metal: 0.05, color: 0xa8a8ac },
+  grayDark:  { map: texConcrete, tile: 3, rough: 0.8, metal: 0.1, color: 0x6c6c72 },
+  ruin:      { map: brickTex('#8a7e70', '#4a423a'), tile: 4, rough: 0.95, metal: 0 },
 };
 const matCache = new Map();
 function getMat(key) {
@@ -1074,6 +1192,63 @@ function tree(x, z, h = 2.4) {
 }
 const foliageMat = new THREE.MeshStandardMaterial({ color: 0x2f7d3a, roughness: 0.9, flatShading: true });
 const foliageGeo = new THREE.ConeGeometry(1.6, 3.6, 7);
+
+// Floor slab with rectangular holes [[x0, z0, x1, z1], ...]; top surface at y
+function slab(x0, z0, x1, z1, y, holes = [], m = 'concrete', thick = 0.5) {
+  const xs = [...new Set([x0, x1, ...holes.flatMap((h) => [h[0], h[2]])])].filter((v) => v >= x0 && v <= x1).sort((a, b) => a - b);
+  const zs = [...new Set([z0, z1, ...holes.flatMap((h) => [h[1], h[3]])])].filter((v) => v >= z0 && v <= z1).sort((a, b) => a - b);
+  // Merge cells along x into strips to keep the collider count low
+  for (let j = 0; j < zs.length - 1; j++) {
+    let start = null;
+    for (let i = 0; i <= xs.length - 1; i++) {
+      const inside = i < xs.length - 1 && !holes.some((h) => {
+        const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2;
+        return cx > h[0] && cx < h[2] && cz > h[1] && cz < h[3];
+      });
+      if (inside && start === null) start = xs[i];
+      if (!inside && start !== null) { solid(start, y - thick, zs[j], xs[i], y, zs[j + 1], m); start = null; }
+    }
+  }
+}
+// Ruined three-storey building for the City map, centred on (cx, cz); 22 x 22 m, floors every 5 m
+function ruinBuilding(cx, cz, rubbleSide) {
+  const H = 11, T = 0.6, m = 'ruin';
+  // Ground floor walls with doors in every side
+  wallX(cz - H, cz - H + T, cx - H, cx + H, 0, 5, [[cx - 2, cx + 2], [cx + 6, cx + 8.5]], m);
+  wallX(cz + H - T, cz + H, cx - H, cx + H, 0, 5, [[cx - 2, cx + 2], [cx - 8.5, cx - 6]], m);
+  wallZ(cx - H, cx - H + T, cz - H, cz + H, 0, 5, [[cz - 2, cz + 2]], m);
+  wallZ(cx + H - T, cx + H, cz - H, cz + H, 0, 5, [[cz - 2, cz + 2]], m);
+  // First floor: broken walls with big openings (the south one is reached by a rubble ramp)
+  wallX(cz - H, cz - H + T, cx - H, cx + H, 5, 10, [[cx - 7, cx - 3], [cx + 3, cx + 7]], m);
+  wallX(cz + H - T, cz + H, cx - H, cx + H, 5, 10, [[cx - 7, cx - 3], [cx + 3.5, cx + 6.5]], m);
+  wallZ(cx - H, cx - H + T, cz - H, cz + H, 5, 10, [[cz - 6, cz - 2], [cz + 3, cz + 7]], m);
+  wallZ(cx + H - T, cx + H, cz - H, cz + H, 5, 10, [[cz - 7, cz - 3], [cz + 2, cz + 6]], m);
+  // Second floor: half-collapsed walls, low enough to shoot over from a crouch… or jump through
+  wallX(cz - H, cz - H + T, cx - H, cx + H, 10, 12.5, [[cx - 4, cx + 1]], m, 2.5);
+  wallX(cz + H - T, cz + H, cx - H, cx + 2, 10, 11.2, [], m);
+  wallZ(cx - H, cx - H + T, cz - H, cz + H, 10, 12.5, [[cz + 1, cz + 6]], m, 2.5);
+  wallZ(cx + H - T, cx + H, cz - H, cz + 3, 10, 12.5, [[cz - 6, cz - 2]], m, 2.5);
+  // Floors with stair holes and a collapsed hole in the second floor
+  slab(cx - H, cz - H, cx + H, cz + H, 5, [[cx - 10.4, cz - 8, cx - 6.8, cz + 0.5]]);
+  slab(cx - H, cz - H, cx + H, cz + H, 10, [[cx + 6.8, cz - 0.5, cx + 10.4, cz + 8], [cx - 3, cz + 3, cx + 3, cz + 7]]);
+  // Roof only over the north half, with a parapet
+  slab(cx - H, cz - H, cx + H, cz, 15, [[cx - 10.4, cz - 3, cx - 6.8, cz]]);
+  wallX(cz - H, cz - H + 0.4, cx - H, cx + H, 15, 16, [[cx - 1.5, cx + 1.5]], m);
+  // Stairs: ground -> 1st (west), 1st -> 2nd (east), 2nd -> roof (west)
+  stairs(cx - 8.6, cz - 8, '+z', 3.2, 0, 5, 0.6, 'concrete');
+  stairs(cx + 8.6, cz + 8, '-z', 3.2, 5, 10, 0.6, 'concrete');
+  stairs(cx - 8.6, cz - 3, '+z', 3.2, 10, 15, 0.6, 'concrete');
+  // Rubble ramp outside, up to the first floor opening on the south side
+  stairs(cx + 5, cz + H, '+z', 3, 0, 5, 0.6, 'rock');
+  // Cover inside
+  solid(cx + 2, 0, cz - 6, cx + 3.2, 1.2, cz - 4.8, 'crate');
+  solid(cx - 3, 5, cz + 4, cx - 1.8, 6.2, cz + 5.2, 'crate');
+  solid(cx + 1, 10, cz - 7, cx + 4, 11.1, cz - 6.4, 'ruin');
+  // A pile of rubble against one outer wall
+  const s = rubbleSide;
+  solid(cx + s * 11, 0, cz - 6, cx + s * 13.5, 1.2, cz - 1, 'rock');
+  solid(cx + s * 11, 1.2, cz - 5, cx + s * 12.3, 2.2, cz - 2, 'rock');
+}
 
 const MAPS = [
   {
@@ -1455,7 +1630,7 @@ const MAPS = [
   {
     // Secret map: hidden from the map lists, opened with the lock on the singleplayer screen
     id: 'void', secret: true, name: 'The Void', desc: 'Islands of rock over a sea of fire.',
-    half: 40, ground: 'rock', wall: 'rock', jump: 1.25, hardcoreDifficulty: 'nightmare',
+    half: 40, ground: 'rock', wall: 'rock', jump: 1.25,
     unlock: { need: 10, maps: ['keep', 'towers', 'canyon', 'warehouse', 'spire'] },
     preview: 'linear-gradient(#000, #6a0a0a 55%, #2a1010 56%, #e04a00)',
     theme: { sky: ['#000000', '#140000', '#7a1208', '#000000'], bg: 0x050000, fog: [0x1a0505, 30, 130], hemi: [0xff9a8a, 0x300808, 0.85], sun: [0xff6a40, 1.4] },
@@ -1508,6 +1683,121 @@ const MAPS = [
   },
 
   {
+    // Custom servers only: a small closed gray box
+    id: 'box', customOnly: true, name: 'The Box', desc: 'A small closed gray box: floating steps, wall ledges, jump pads and items everywhere.',
+    half: 15, ground: 'gray', wall: 'gray', wallHeight: 10, ceiling: 10, ceilingMat: 'gray', hill: [0, 0, -8, 3],
+    preview: 'linear-gradient(#9a9aa0, #c8c8cc 55%, #8a8a90 56%, #6c6c72)',
+    theme: { sky: ['#8a8a90', '#a0a0a6', '#b8b8bc', '#8a8a90'], bg: 0x8a8a90, fog: [0x9a9aa0, 30, 90], hemi: [0xffffff, 0x8a8a8a, 1.45], sun: [0xffffff, 0.25] },
+    build() {
+      // Centre block, jump pad onto it
+      solid(-1.5, 0, -1.5, 1.5, 4, 1.5, 'grayDark');
+      pad(0, 0, 6, 0, 4, 0.3, 7);
+      // Ledges on all four walls
+      solid(-7, 3.6, -15, 7, 4, -12.5, 'grayDark');
+      solid(-7, 3.6, 12.5, 7, 4, 15, 'grayDark');
+      solid(-15, 3.6, -5, -12.5, 4, 5, 'grayDark');
+      solid(12.5, 3.6, -5, 15, 4, 5, 'grayDark');
+      // Floating steps up to the north and south ledges
+      const step = (x, z, top) => solid(x - 1, top - 0.4, z - 1, x + 1, top, z + 1, 'grayDark');
+      step(-11, -5, 1.3); step(-11, -8.5, 2.6); step(-9, -11, 3.9);
+      step(11, 5, 1.3); step(11, 8.5, 2.6); step(9, 11, 3.9);
+      // Jump pads to the side ledges and to two platforms floating in the air
+      pad(-8, 0, 0, -13.6, 4, 0, 6.8);
+      pad(8, 0, 0, 13.6, 4, 0, 6.8);
+      solid(-9, 5.6, 6, -5, 6, 10, 'grayDark');
+      solid(5, 5.6, -10, 9, 6, -6, 'grayDark');
+      pad(-3, 0, 11, -7, 6, 8, 7.8);
+      pad(3, 0, -11, 7, 6, -8, 7.8);
+      // Obstacles
+      solid(-5, 0, -4, -3.8, 1.2, -2.8, 'crate');
+      solid(3.8, 0, 2.8, 5, 1.2, 4, 'crate');
+      solid(9, 0, -11.4, 11.4, 1.2, -8.6, 'crate');
+      solid(9.6, 1.2, -10.6, 10.8, 2.4, -9.4, 'crate');
+      solid(-11.4, 0, 8.6, -9, 1.2, 11.4, 'crate');
+      solid(-10.8, 1.2, 9.4, -9.6, 2.4, 10.6, 'crate');
+      solid(-6, 0, 3, -3, 1.1, 3.5, 'grayDark');
+      solid(3, 0, -3.5, 6, 1.1, -3, 'grayDark');
+      for (const [x, z] of [[-10, -10], [10, 10], [-10, 10], [10, -10], [0, 0]]) light(x, 8.5, z, 0xffffff, 40, 22);
+
+      for (const p of [[-12.5, 0, 12.5], [12.5, 0, -12.5], [-5, 0, -11], [5, 0, 11], [-12, 0, 3], [12, 0, -3]]) spawnP(...p);
+      for (const p of [[0, 0, -11], [0, 0, 11], [-11.5, 0, -1], [11.5, 0, 1], [-7, 0, -7], [7, 0, 7]]) spawnE(...p);
+      for (const p of [[0, 0, -5], [5, 0, 0], [-5, 0, 0], [0, 0, 4]]) wander(...p);
+
+      for (const it of [
+        // On the floor
+        ['shotgun', 0, 0, -7], ['health', 12, 0, 12], ['shells', -12.5, 0, -12.5],
+        // On the wall ledges, the centre block and the crates
+        ['machinegun', 0, 4, 0], ['railgun', 0, 4, -13.8], ['slugs', 4, 4, -13.8], ['rocket', 0, 4, 13.8], ['rockets', -4, 4, 13.8],
+        ['heavyArmor', -13.8, 4, 0], ['grenade', 13.8, 4, 0], ['grenades', 13.8, 4, 3], ['bullets', 10.2, 2.4, -10],
+        // On the floating platforms
+        ['mega', -7, 6, 8], ['armor', 7, 6, -8],
+        // Hovering in the air — jump to grab them
+        ['health', -5, 1.3, 6], ['health', 6, 1.3, -6], ['shells', -6, 1.3, -7], ['bullets', 6, 1.3, 7], ['health', 0, 1.3, -3.5],
+      ]) item(...it);
+    },
+  },
+  {
+    // Custom servers only: a giant ruined city
+    id: 'city', customOnly: true, name: 'City', desc: 'A giant ruined city: four broken buildings to climb, hide in and hold.',
+    half: 70, ground: 'concrete', wall: 'ruin', wallHeight: 16, hill: [0, 0, -3.5, 5],
+    preview: 'linear-gradient(#2a2420, #7a6450 55%, #6a6660 56%, #4a4640)',
+    theme: { sky: ['#1e1a18', '#4a3e34', '#a0805e', '#2e2620'], bg: 0x4a3e34, fog: [0x6a5a4a, 55, 210], hemi: [0xd8c8b0, 0x4a3a2a, 1.0], sun: [0xffdcb0, 1.6] },
+    build() {
+      // Four ruined buildings in a square
+      ruinBuilding(-30, -30, -1);
+      ruinBuilding(30, -30, 1);
+      ruinBuilding(-30, 30, -1);
+      ruinBuilding(30, 30, 1);
+      // Central plaza: broken fountain and a monument
+      wallX(-6, -5.4, -6, 6, 0, 0.9, [[-1.5, 1.5]], 'ruin');
+      wallX(5.4, 6, -6, 6, 0, 0.9, [[-1.5, 1.5]], 'ruin');
+      wallZ(-6, -5.4, -5.4, 5.4, 0, 0.9, [], 'ruin');
+      wallZ(5.4, 6, -5.4, 5.4, 0, 0.9, [], 'ruin');
+      solid(-1, 0, -1, 1, 6, 1, 'marble');
+      // Jump pads from the plaza up to two roofs
+      pad(10, 0, -10, 24, 15, -36, 19);
+      pad(-10, 0, 10, -36, 15, 24, 19);
+      // Wrecked cars and debris in the streets
+      const car = (x, z, alongX, m) => alongX ? solid(x - 2.1, 0, z - 0.9, x + 2.1, 1.4, z + 0.9, m) : solid(x - 0.9, 0, z - 2.1, x + 0.9, 1.4, z + 2.1, m);
+      car(-12, -3, false, 'contRed'); car(14, 4, false, 'contBlue'); car(3, -16, true, 'contGreen'); car(-4, 17, true, 'contRed');
+      car(-52, -8, false, 'contBlue'); car(50, 10, false, 'contGreen'); car(8, -52, true, 'contRed'); car(-10, 54, true, 'contBlue');
+      car(-30, -2, true, 'contGreen'); car(30, 3, true, 'contRed'); car(2, 30, false, 'contBlue'); car(-3, -30, false, 'contGreen');
+      // Broken walls and rubble heaps for cover
+      for (const [x0, z0, x1, z1, h] of [
+        [-60, -30, -58.8, -20, 2.5], [58.8, 20, 60, 30, 2.5], [-20, -60, -10, -58.8, 2.5], [10, 58.8, 20, 60, 2.5],
+        [-18, 12, -12, 13, 1.6], [12, -13, 18, -12, 1.6], [-45, 50, -44, 58, 3], [44, -58, 45, -50, 3],
+      ]) solid(x0, 0, z0, x1, h, z1, 'ruin');
+      for (const [x, z] of [[-50, -50], [50, 50], [-50, 50], [50, -50], [0, -45], [0, 45], [-45, 0], [45, 0]]) {
+        solid(x - 2.5, 0, z - 2.5, x + 2.5, 0.8, z + 2.5, 'rock');
+        solid(x - 1.5, 0.8, z - 1.2, x + 1.2, 1.6, z + 1.5, 'rock');
+      }
+      // Street lamps (lights)
+      for (const [x, z] of [[0, -20], [0, 20], [-20, 0], [20, 0], [0, 0]]) light(x, 6, z, 0xffc080, 30, 30);
+
+      for (const p of [[0, 0, -62], [0, 0, 62], [-62, 0, 0], [62, 0, 0], [-58, 0, -58], [58, 0, 58], [-58, 0, 58], [58, 0, -58],
+        [-30, 0, -26], [30, 0, 26]]) spawnP(...p);
+      for (const p of [[0, 0, -35], [0, 0, 35], [-35, 0, 0], [35, 0, 0], [-15, 0, -15], [15, 0, 15], [-15, 0, 15], [15, 0, -15],
+        [-60, 0, -40], [60, 0, 40], [-40, 0, 60], [40, 0, -60], [-30, 5, -25], [30, 5, 25], [30, 10, -35], [-30, 10, 25]]) spawnE(...p);
+      for (const p of [[0, 0, -10], [10, 0, 0], [0, 0, 10], [-10, 0, 0], [-30, 0, 0], [30, 0, 0], [0, 0, -30], [0, 0, 30]]) wander(...p);
+
+      for (const it of [
+        // Roofs: railguns for the snipers
+        ['railgun', -30, 15, -36], ['railgun', 30, 15, 24], ['slugs', 30, 15, -36], ['slugs', -24, 15, 22],
+        ['rocket', 34, 15, -38], ['rocket', -34, 15, 22],
+        // Inside the buildings
+        ['shotgun', -30, 0, -24], ['machinegun', 30, 0, -24], ['shotgun', 30, 0, 36], ['machinegun', -30, 0, 36],
+        ['grenade', -26, 5, -34], ['grenade', 34, 5, 26], ['armor', 26, 10, -26], ['armor', -34, 10, 34],
+        ['heavyArmor', 34, 10, -34], ['heavyArmor', -26, 10, 26],
+        ['rockets', -34, 5, -26], ['rockets', 26, 5, 34], ['grenades', 34, 5, -34], ['grenades', -26, 5, 26],
+        ['shells', 26, 0, -26], ['bullets', -26, 0, 34], ['bullets', 26, 0, 26], ['shells', -34, 0, -34],
+        // Streets and plaza
+        ['mega', 0, 0, -3.5], ['health', 0, 0, -20], ['health', 0, 0, 20], ['health', -20, 0, 0], ['health', 20, 0, 0],
+        ['health', -55, 0, -55], ['health', 55, 0, 55], ['health', -55, 0, 55], ['health', 55, 0, -55],
+        ['bullets', -8, 0, -46], ['shells', 8, 0, 46], ['rockets', -46, 0, 8], ['slugs', 46, 0, -8],
+      ]) item(...it);
+    },
+  },
+  {
     // Boss arena used by the Boss Fight public server (not in the normal map lists)
     id: 'colosseum', publicOnly: true, name: 'Colosseum', desc: 'A giant stormy arena built for the Titan.',
     half: 70, ground: 'sand', wall: 'marble', wallHeight: 16,
@@ -1558,6 +1848,11 @@ const MAPS = [
   },
 ];
 const mapById = (id) => MAPS.find((m) => m.id === id) || MAPS[0];
+for (const sv of CUSTOM_SERVERS) {
+  const m = mapById(sv.map);
+  sv.name = 'Custom · ' + m.name;
+  sv.desc = m.desc;
+}
 // Maps with an "unlock" rule need hardcore best scores on other maps
 function unlockProgress(m, bests = loadBests()) {
   if (!m.unlock) return { unlocked: true, done: 0, total: 0 };
@@ -1626,11 +1921,13 @@ function loadMap(id) {
   solid(W, 0, -W, W + 1, wh, W, def.wall);
   if (def.ceiling) {
     // Enclosed map: walls up to the roof and a ceiling
-    solid(-W - 1, 12, -W - 1, W + 1, def.ceiling, -W, def.wall);
-    solid(-W - 1, 12, W, W + 1, def.ceiling, W + 1, def.wall);
-    solid(-W - 1, 12, -W, -W, def.ceiling, W, def.wall);
-    solid(W, 12, -W, W + 1, def.ceiling, W, def.wall);
-    solid(-W - 1, def.ceiling, -W - 1, W + 1, def.ceiling + 1, W + 1, 'metal');
+    if (def.ceiling > wh) {
+      solid(-W - 1, wh, -W - 1, W + 1, def.ceiling, -W, def.wall);
+      solid(-W - 1, wh, W, W + 1, def.ceiling, W + 1, def.wall);
+      solid(-W - 1, wh, -W, -W, def.ceiling, W, def.wall);
+      solid(W, wh, -W, W + 1, def.ceiling, W, def.wall);
+    }
+    solid(-W - 1, def.ceiling, -W - 1, W + 1, def.ceiling + 1, W + 1, def.ceilingMat || 'metal');
   }
   phys.jump = CFG.jumpSpeed * Math.sqrt(match.settings.jumpHeight || 1) * (def.jump || 1);
 
@@ -1682,9 +1979,7 @@ function loadMap(id) {
   WANDER_POINTS = [...ENEMY_SPAWNS, ...mapData.wander];
   const s = match.settings;
   for (const [t, x, y, z] of mapData.items) {
-    const kind = ITEMS[t].kind;
-    if (kind === 'weapon' && !s.weaponPickups) continue;
-    if ((kind === 'health' || kind === 'armor') && !s.healthPickups) continue;
+    if (!itemAllowed(t, s)) continue;
     addItem(t, x, y, z);
   }
 }
@@ -2424,10 +2719,10 @@ function renderStats() {
   const totalKills = Object.values(s.kills).reduce((a, b) => a + b, 0);
   const hrs = (sec) => sec >= 3600 ? `${Math.floor(sec / 3600)}h ${Math.floor(sec % 3600 / 60)}m` : fmtTime(sec);
 
-  const enemyRows = Object.keys(ENEMY_TYPES).sort((a, b) => !!ENEMY_TYPES[a].boss - !!ENEMY_TYPES[b].boss).map((id) => [ENEMY_TYPES[id].name + (ENEMY_TYPES[id].boss ? ' (boss)' : ''), n(s.kills[id] || 0), !s.kills[id]]);
+  const enemyRows = Object.keys(ENEMY_TYPES).sort((a, b) => !!ENEMY_TYPES[a].boss - !!ENEMY_TYPES[b].boss).map((id) => [ENEMY_TYPES[id].name + (ENEMY_TYPES[id].boss ? ' (boss)' : ENEMY_TYPES[id].beta ? ' (beta)' : ''), n(s.kills[id] || 0), !s.kills[id]]);
   enemyRows.push(['<b>All monsters</b>', n(totalKills)]);
   const bests = loadBests();
-  const hcRows = MAPS.filter((m) => !m.publicOnly && (!m.secret || isMapUnlocked(m.id) || bests[m.id])).map((m) => {
+  const hcRows = MAPS.filter((m) => !m.publicOnly && !m.customOnly && (!m.secret || isMapUnlocked(m.id) || bests[m.id])).map((m) => {
     const b = bests[m.id];
     return [m.name + (m.secret ? ' ☠' : ''), b ? `${b.frags} frags · ${fmtTime(b.time)}` : '—', !b];
   });
@@ -2512,6 +2807,7 @@ function showScreen(name) {
   if (name === 'Stats') renderStats();
   if (name === 'Keys') renderKeys();
   if (name === 'Servers') renderServers(true);
+  if (name === 'Custom') renderCustom(true);
   if (name === 'Main') renderMain();
 }
 function hideOverlay() {
@@ -2548,7 +2844,7 @@ function toggleView() {
 function buildMapCards(container, onPick) {
   container.innerHTML = '';
   for (const m of MAPS) {
-    if (m.secret || m.publicOnly) continue; // secret maps use the lock, public-only maps the servers
+    if (m.secret || m.publicOnly || m.customOnly) continue; // secret maps use the lock, public-only maps the servers
     const c = document.createElement('div');
     c.className = 'mapCard';
     c.dataset.id = m.id;
@@ -2633,13 +2929,14 @@ function fmtSetting(f, v) {
   return String(v);
 }
 function makeSettingsEditor(box, schema, onInput) {
-  const controls = [];
+  const controls = [], heads = [];
   for (const f of schema) {
     if (f.type === 'header') {
       const h = document.createElement('div');
       h.className = 'setHeader';
       h.textContent = f.label;
       box.appendChild(h);
+      heads.push({ f, h });
       continue;
     }
     const row = document.createElement('div');
@@ -2671,8 +2968,10 @@ function makeSettingsEditor(box, schema, onInput) {
     controls.push({ f, row, ctl, val });
   }
   // Returns a function that shows the given settings
-  return (settings, editable) => {
+  return (settings, editable, showCustom = false) => {
+    for (const { f, h } of heads) h.style.display = f.custom && !showCustom ? 'none' : '';
     for (const { f, row, ctl, val } of controls) {
+      row.style.display = f.custom && !showCustom ? 'none' : '';
       const v = settings[f.key];
       if (f.type === 'toggle') ctl.checked = !!v;
       else if (document.activeElement !== ctl) ctl.value = v;
@@ -2686,12 +2985,14 @@ const renderLobbySettings = makeSettingsEditor($('settingsBox'), SETTINGS_SCHEMA
   if (net.mode !== 'host') return;
   lobby.settings[f.key] = v;
   lobby.settings = sanitizeSettings(lobby.settings);
-  try { localStorage.setItem('arena3d-settings', JSON.stringify(lobby.settings)); } catch { /* ignore */ }
+  if (isCustomServer()) lobby.settings.mapMode = 'host';
+  else try { localStorage.setItem('arena3d-settings', JSON.stringify(lobby.settings)); } catch { /* ignore */ }
   lobbyChanged();
 });
 function renderSettings() {
-  const editable = net.mode === 'host' && !net.publicN;
-  renderLobbySettings(lobby.settings, editable);
+  const custom = isCustomServer();
+  const editable = net.mode === 'host' && (!net.publicN || custom);
+  renderLobbySettings(lobby.settings, editable, custom);
   $('settingsNote').textContent = editable ? '(you are the host)' : '(set by the host)';
 }
 const renderSpSettings = makeSettingsEditor($('spSettingsBox'), SP_SCHEMA, (f, v) => {
@@ -2706,7 +3007,7 @@ const renderSpSettings = makeSettingsEditor($('spSettingsBox'), SP_SCHEMA, (f, v
 function myVote() { return lobby.votes[net.myId]; }
 function lobbyMapOpen(id) { return !lobby.unlocked || lobby.unlocked.includes(id); }
 function onLobbyMapClick(id) {
-  if (!lobbyMapOpen(id) || net.publicN) return;
+  if (!lobbyMapOpen(id) || net.publicN) return; // public and custom servers have their own maps
   if (net.mode === 'host') {
     if (lobby.settings.mapMode === 'host') lobby.hostMap = id;
     else lobby.votes[net.myId] = id;
@@ -2735,7 +3036,10 @@ function renderLobby() {
     badge.style.display = voteMode || !open ? 'block' : 'none';
     badge.textContent = !open ? '🔒 Locked' : `${counts[id] || 0} vote${counts[id] === 1 ? '' : 's'}`;
   }
-  $('mapModeLabel').textContent = voteMode ? '— click a map to vote' : net.mode === 'host' ? '— click to choose' : '— the host picks';
+  const custom = isCustomServer();
+  $('mpMaps').style.display = custom ? 'none' : '';
+  $('mapModeLabel').textContent = custom ? `— ${mapById(publicServer(net.publicN).map).name} (fixed on this server)`
+    : voteMode ? '— click a map to vote' : net.mode === 'host' ? '— click to choose' : '— the host picks';
   const ul = $('lobbyPlayers');
   ul.innerHTML = lobby.players.map((p) => {
     const col = '#' + new THREE.Color(PLAYER_COLORS[p.color % PLAYER_COLORS.length]).getHexString();
@@ -2745,9 +3049,13 @@ function renderLobby() {
   }).join('') || '<li style="color:#c9b8a6">Connecting…</li>';
   renderSettings();
   const isHost = net.mode === 'host';
-  $('btnStartMatch').style.display = isHost && !net.publicN ? '' : 'none';
-  $('btnDefaults').style.display = isHost && !net.publicN ? '' : 'none';
-  if (net.publicN) {
+  $('btnStartMatch').style.display = isHost && (!net.publicN || custom) ? '' : 'none';
+  $('btnDefaults').style.display = isHost && (!net.publicN || custom) ? '' : 'none';
+  if (custom) {
+    $('lobbyStatus').textContent = isHost
+      ? `You are the host of ${publicServer(net.publicN).name} — change the settings (the Advanced ones are at the bottom) and press Start match.`
+      : lobby.inMatch ? 'A match is running — joining…' : `Waiting for the host of ${publicServer(net.publicN).name} to start the match…`;
+  } else if (net.publicN) {
     $('lobbyStatus').textContent = `${publicServer(net.publicN).name} — the next match starts in a few seconds…`;
   } else if (!isHost) {
     $('lobbyStatus').textContent = !net.connected ? $('lobbyStatus').textContent
@@ -2764,7 +3072,7 @@ function renderPause() {
   const solo = net.mode === 'solo';
   $('pauseTitle').textContent = match.active ? 'Paused' : 'Menu';
   $('btnRestart').style.display = solo && match.active ? '' : 'none';
-  $('btnToLobby').style.display = net.mode === 'host' && match.active && !net.publicN ? '' : 'none';
+  $('btnToLobby').style.display = net.mode === 'host' && match.active && (!net.publicN || isCustomServer()) ? '' : 'none';
   $('btnQuit').textContent = net.publicN ? 'Leave server' : 'Quit to main menu';
   $('btnResume').style.display = match.active ? '' : 'none';
   const m = mapById(match.mapId);
@@ -2895,11 +3203,11 @@ $('btnCopy').addEventListener('click', () => {
   if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => { $('lobbyStatus').textContent = 'Invite link copied'; }, () => { $('lobbyStatus').textContent = link; });
   else $('lobbyStatus').textContent = link;
 });
-$('btnLeave').addEventListener('click', () => { const pub = net.publicN; leaveNetwork(); showScreen(pub ? 'Servers' : 'Main'); });
+$('btnLeave').addEventListener('click', () => { const pub = net.publicN, custom = isCustomServer(); leaveNetwork(); showScreen(custom ? 'Custom' : pub ? 'Servers' : 'Main'); });
 $('btnDefaults').addEventListener('click', () => {
   if (net.mode !== 'host') return;
   lobby.settings = { ...DEFAULT_SETTINGS };
-  try { localStorage.removeItem('arena3d-settings'); } catch { /* ignore */ }
+  if (!net.publicN) try { localStorage.removeItem('arena3d-settings'); } catch { /* ignore */ }
   lobbyChanged();
 });
 $('btnStartMatch').addEventListener('click', () => { hostStartMatch(); lockPointer(); });
@@ -2995,7 +3303,42 @@ function assignKey(action, code) {
   binds[action] = code;
   saveBinds();
 }
-$('btnCustom').addEventListener('click', () => showScreen('Custom'));
+function renderCustom(probe = false) {
+  const list = $('customList');
+  list.innerHTML = '';
+  for (const sv of CUSTOM_SERVERS) {
+    const row = document.createElement('div');
+    row.className = 'serverRow';
+    const info = serverInfo[sv.n];
+    const st = info === undefined ? 'Checking…'
+      : info === null ? 'Nobody here — join to open it and be the host'
+      : `${info.players}/${info.max} players${info.mode ? ' · ' + info.mode : ''}${info.map ? ' · match running' : ' · in the lobby'}`;
+    const tag = sv.map === 'box' || sv.map === 'city' ? ' <span class="newTag">NEW MAP</span>' : '';
+    row.innerHTML = `<div><div class="nm">${escapeHtml(sv.name)}${tag}</div><div class="ds">${escapeHtml(sv.desc)}</div><div class="st">${escapeHtml(st)}</div></div>`;
+    const btn = document.createElement('button');
+    btn.className = 'primary';
+    btn.textContent = 'Join';
+    btn.addEventListener('click', () => {
+      readName();
+      Sound.init();
+      $('customStatus').textContent = `Connecting to ${sv.name}…`;
+      startPublic(sv.n);
+    });
+    row.appendChild(btn);
+    list.appendChild(row);
+  }
+  if (probe) {
+    for (const sv of CUSTOM_SERVERS) {
+      delete serverInfo[sv.n];
+      probeServer(sv.n, (info) => {
+        serverInfo[sv.n] = info;
+        if (currentScreen === 'Custom') renderCustom(false);
+      });
+    }
+  }
+}
+$('btnCustom').addEventListener('click', () => { readName(); showScreen('Custom'); });
+$('btnCustomRefresh').addEventListener('click', () => renderCustom(true));
 $('btnCustomBack').addEventListener('click', () => showScreen('Servers'));
 $('btnStats').addEventListener('click', () => { saveStats(); showScreen('Stats'); });
 $('btnStatsBack').addEventListener('click', () => showScreen('Main'));
@@ -3179,6 +3522,11 @@ function updateHud() {
   $('scope').style.display = scoped ? 'block' : 'none';
   // Boss health bar
   const boss = match.active ? enemies.find((e) => e.def.boss && e.alive) : null;
+  const mh = modeHudText();
+  const mhEl = $('modeHud');
+  if (mhEl.innerHTML !== mh) mhEl.innerHTML = mh;
+  mhEl.style.display = mh ? 'block' : 'none';
+  animateHill();
   $('bossBar').style.display = boss ? 'block' : 'none';
   msgBox.classList.toggle('low', !!boss);
   if (boss) {
@@ -3232,8 +3580,11 @@ function updateHud() {
   st.style.width = (state.stamina / CFG.staminaMax * 100).toFixed(1) + '%';
   st.classList.toggle('exhausted', state.exhausted);
   crosshair.classList.toggle('hit', state.hitMarkT > 0);
-  if (!state.alive && !match.hardcore && match.bossMods && match.bossMods.hc && !state.freeRespawn) {
-    const hint = '☠ Hardcore event — you are out until the next round';
+  if (!state.alive && modeIs('lms') && lmsOut(state.deaths, state.out)) {
+    const hint = state.out && state.deaths < match.settings.lmsLives ? 'A last man standing round is running — you play in the next one' : 'You are out of lives — watch until someone wins';
+    if ($('deathHint').textContent !== hint) $('deathHint').textContent = hint;
+  } else if (!state.alive && !match.hardcore && match.bossMods && match.bossMods.hc && !state.freeRespawn) {
+    const hint = match.settings.hardcore ? '☠ Hardcore — you are out until the next round' : '☠ Hardcore event — you are out until the next round';
     if ($('deathHint').textContent !== hint) $('deathHint').textContent = hint;
   } else if (!state.alive && !match.hardcore) {
     const wait = respawnWait();
@@ -3243,13 +3594,17 @@ function updateHud() {
 }
 function updateScoreboard() {
   if (scoreboardEl.style.display !== 'block') return;
-  const rows = [{ name: net.name, color: net.myColor, f: state.frags, d: state.deaths, me: true }];
-  for (const r of remotes.values()) rows.push({ name: r.name, color: r.colorIdx, f: r.frags, d: r.deaths, me: false });
+  const rows = [{ id: net.myId, name: net.name, color: net.myColor, f: state.frags, d: state.deaths, out: state.out, me: true }];
+  for (const r of remotes.values()) rows.push({ id: r.id, name: r.name, color: r.colorIdx, f: r.frags, d: r.deaths, out: r.out, me: false });
   rows.sort((a, b) => b.f - a.f || a.d - b.d);
-  const title = net.mode === 'solo' ? `${escapeHtml(mapById(match.mapId).name)} · ${DIFFICULTIES[match.difficulty].label}` : `Room ${escapeHtml(net.code)}`;
-  const html = `<table><tr><th>${title}</th><th>Frags</th><th>Deaths</th></tr>` + rows.map((p) => {
-    const col = '#' + new THREE.Color(PLAYER_COLORS[p.color % PLAYER_COLORS.length]).getHexString();
-    return `<tr class="${p.me ? 'me' : ''}"><td><span class="dot" style="background:${col}"></span>${escapeHtml(p.name)}</td><td>${p.f}</td><td>${p.d}</td></tr>`;
+  if (modeIs('tdm')) rows.sort((a, b) => teamOf(a.id) - teamOf(b.id) || b.f - a.f);
+  const extra = match.active ? modeColumn() : null;
+  let title = net.mode === 'solo' ? `${escapeHtml(mapById(match.mapId).name)} · ${DIFFICULTIES[match.difficulty].label}` : `Room ${escapeHtml(net.code)}`;
+  if (match.active && match.mode && match.mode !== 'ffa') title += ` · ${MODES[match.mode].name}`;
+  if (modeIs('tdm')) { const t = teamScores(); title += ` — Red ${t[0]} : ${t[1]} Blue`; }
+  const html = `<table><tr><th>${title}</th><th>Frags</th><th>Deaths</th>${extra ? `<th>${extra[0]}</th>` : ''}</tr>` + rows.map((p) => {
+    const col = '#' + new THREE.Color(colorFor(p.color, p.id)).getHexString();
+    return `<tr class="${p.me ? 'me' : ''}"><td><span class="dot" style="background:${col}"></span>${escapeHtml(p.name)}</td><td>${p.f}</td><td>${p.d}</td>${extra ? `<td>${extra[1](p.id, p.d, p.out)}</td>` : ''}</tr>`;
   }).join('') + '</table>';
   if (scoreboardEl.innerHTML !== html) scoreboardEl.innerHTML = html;
 }
@@ -3382,21 +3737,22 @@ function tryFire() {
   const id = state.weapon, w = WEAPONS[id], s = match.settings;
   if (state.fireCd > 0 || state.switchT > 0) return;
   if (!hasAmmoFor(id)) {
-    // The weapon stays selected; it just clicks until ammo is picked up
+    // Out of ammo: switch to the blaster, which never runs out
     Sound.play('empty');
-    state.fireCd = 0.35;
+    state.fireCd = 0.2;
     const now = performance.now();
     if (now > noAmmoMsgT) {
-      msg(`No ${w.ammo} for the ${w.name}`, '#ff8a7a');
+      msg(`Out of ${w.ammo} — switched to the Blaster`, '#ff8a7a');
       noAmmoMsgT = now + 1500;
     }
+    selectWeapon('blaster', true);
     return;
   }
   if (w.ammo && !s.infiniteAmmo) state.ammo[w.ammo] -= w.cost;
   state.fireCd = w.cooldown / s.fireRate;
   computeAim();
   getMuzzleWorld(muzzlePos);
-  const mul = s.dmgMul;
+  const mul = modeIs('instagib') ? 50 : s.dmgMul; // instagib: every hit kills
 
   if (w.type === 'hitscan') {
     const ends = [];
@@ -3625,17 +3981,31 @@ function damagePlayer(amount, dir, knock = 0, attacker = null, weapon = null) {
   }
   if (attacker !== null && attacker !== net.myId && amount > 0) net.lastAttacker = { id: attacker, w: weapon, t: performance.now() };
   if (state.invuln > 0 || amount <= 0) return;
+  const et = ENEMY_TYPES[weapon];
+  if (et && et.slow) {
+    if (!(state.slowT > 0)) msg('Frozen! You are slowed down', '#88eeff');
+    state.slowT = et.slow;
+    screenFlash('#66ccff', 0.25);
+  }
   state.lastHurt = state.time;
   const save = Math.min(state.armor, Math.ceil(amount * 0.66));
   state.armor -= save;
   const before = state.health;
   state.health -= amount - save;
+  // Frag bonus health is lost for good once it is taken away
+  state.bonus = Math.min(state.bonus || 0, Math.max(0, state.health - match.settings.maxHealth));
   // Count what was actually lost, not the overkill
   stat((s) => { s.dmgTaken += save + Math.min(amount - save, Math.max(0, before)); });
   screenFlash('#c00000', 0.15 + amount / 60);
   state.shake = Math.max(state.shake, Math.min(0.3, amount / 80));
   if (state.painSoundT <= 0) { Sound.play('hurt'); state.painSoundT = 0.25; }
   if (state.health <= 0) killPlayer(attacker, weapon);
+}
+// Every frag gives 10 extra health on top of everything: no maximum, it never comes back once lost
+function fragBonus(n) {
+  if (!state.alive || n <= 0) return;
+  state.health += 10 * n;
+  state.bonus = (state.bonus || 0) + 10 * n;
 }
 function killPlayer(attacker, weapon) {
   state.alive = false;
@@ -3652,6 +4022,13 @@ function killPlayer(attacker, weapon) {
   if (killer === null) killer = net.myId;
   stat((s) => { s.deaths++; s.deathsBy[killer === net.myId ? 'self' : killer === ENEMY_ID ? 'enemy' : 'player']++; });
   statLifeEnd();
+  if (modeIs('lms') && state.deaths >= match.settings.lmsLives) state.out = true;
+  // Custom servers: drop the weapon in hand
+  if (match.settings.playerDrops && state.weapon !== 'blaster' && ITEMS[state.weapon] && weaponAllowed(state.weapon)) {
+    const p = player.pos;
+    if (isAuthority()) authorityDrop(state.weapon, p.x, p.y + 0.4, p.z);
+    else netSend({ t: 'pdrop', w: state.weapon, p: v3a(p) });
+  }
   const k = { t: 'kill', victim: net.myId, killer, w: w || 'world' };
   onKill(k);
   netSend(k);
@@ -3663,6 +4040,7 @@ function killPlayer(attacker, weapon) {
   $('deathButtons').style.display = 'none';
   deathScreen.style.cursor = 'pointer';
   if (match.hardcore) hardcoreGameOver();
+  if (modeIs('lms')) $('deathHint').textContent = state.out ? 'You are out of lives — watch until someone wins' : `${lmsLivesLeft()} ${lmsLivesLeft() === 1 ? 'life' : 'lives'} left — click to respawn`;
   deathScreen.style.display = 'flex';
 }
 // Victory: enough frags in hardcore on the secret map. The run can continue afterwards.
@@ -3722,6 +4100,7 @@ function respawnWait() {
 }
 function tryRespawn() {
   if (match.hardcore) return;
+  if (modeIs('lms') && lmsOut(state.deaths, state.out)) return;
   if (match.bossMods && match.bossMods.hc && !state.freeRespawn) return;
   if (!state.alive && match.active && respawnWait() <= 0) respawnPlayer();
 }
@@ -3730,7 +4109,7 @@ function respawnPlayer(quiet = false) {
   state.freeRespawn = false;
   // Pick the spawn point farthest from other players and enemies
   const threats = [];
-  for (const r of remotes.values()) if (r.alive && r.hasState) threats.push(r.body.pos);
+  for (const r of remotes.values()) if (r.alive && r.hasState && !isTeammate(r.id)) threats.push(r.body.pos);
   for (const e of enemies) if (e.alive) threats.push(e.body.pos);
   let best = pick(PLAYER_SPAWNS), bestScore = -1;
   if (threats.length) {
@@ -3751,14 +4130,17 @@ function respawnPlayer(quiet = false) {
   const ammo = emptyAmmo();
   if (all) {
     for (const id of ORDER) {
+      if (!weaponAllowed(id)) continue;
       weapons[id] = true;
       const w = WEAPONS[id];
       if (w.ammo) ammo[w.ammo] = Math.min(AMMO_MAX[w.ammo], w.pickupAmmo * 3);
     }
   }
+  const forced = modeLoadout(weapons);
+  const first = forced || (all ? ORDER.find((id) => id !== 'blaster' && weapons[id]) : null) || 'blaster';
   Object.assign(state, {
-    alive: true, health: s.maxHealth, armor: Math.min(s.startArmor, s.maxArmor), weapons, ammo, lastHurt: -99,
-    weapon: all ? 'shotgun' : 'blaster', lastWeapon: 'blaster', fireCd: 0.3, switchT: SWITCH_TIME,
+    alive: true, health: s.maxHealth, armor: Math.min(s.startArmor, s.maxArmor), weapons, ammo, lastHurt: -99, slowT: 0, bonus: 0,
+    weapon: first, lastWeapon: first, fireCd: 0.3, switchT: SWITCH_TIME,
     invuln: 1.5, stamina: CFG.staminaMax, deathT: 0,
   });
   net.lastAttacker = null;
@@ -3842,10 +4224,10 @@ function updatePlayer(dt) {
 
   // Health above the maximum slowly decays; optional regeneration 3 s after the last hit
   const ms = match.settings;
-  if (state.health > ms.maxHealth) {
+  if (state.health > ms.maxHealth + (state.bonus || 0)) {
     state.decayT += dt;
     if (state.decayT >= 1) { state.decayT = 0; state.health -= 1; }
-  } else if (ms.healthRegen > 0 && state.time - (state.lastHurt || -99) > 3) {
+  } else if (ms.healthRegen > 0 && state.health < ms.maxHealth && state.time - (state.lastHurt || -99) > 3) {
     state.health = Math.min(ms.maxHealth, state.health + ms.healthRegen * dt);
   }
 
@@ -3871,7 +4253,8 @@ function updatePlayer(dt) {
   state.stamina = clamp(state.stamina + (state.sprinting ? -drain : CFG.staminaRegen * rate) * dt, 0, CFG.staminaMax);
 
   // Ground: full control. Air: steer only while keys are held, keep momentum.
-  const speed = state.sprinting ? phys.sprint : phys.walk;
+  if (state.slowT > 0) state.slowT -= dt;
+  const speed = (state.sprinting ? phys.sprint : phys.walk) * (state.slowT > 0 ? 0.5 : 1);
   if (player.onGround || moving) {
     let sp = speed;
     if (!player.onGround) sp = Math.max(speed, Math.hypot(player.vel.x, player.vel.z));
@@ -3923,8 +4306,10 @@ function makeEnemyCfg(diffKey, count, respawn, types, s = DEFAULT_SETTINGS) {
   return {
     count: count ?? d.count, respawn: respawn ?? d.respawn, types: types || 'all',
     hp: d.hp * (s.enemyHealth ?? 1), dmg: d.dmg * (s.enemyDamage ?? 1), speed: d.speed * (s.enemySpeed ?? 1),
-    fire: d.fire, spread: d.spread, brute: d.brute, sight: d.sight, proj: d.proj, boss: !!s.boss,
+    fire: d.fire / (s.enemyFireRate || 1), fireRate: s.enemyFireRate || 1, spread: d.spread, brute: d.brute, sight: d.sight, proj: d.proj, boss: !!s.boss,
     minigun: !!ENEMY_TYPES.minigunner && (diffKey === 'insane' || diffKey === 'nightmare'),
+    // Beta monsters: the settings are always off outside custom servers
+    betas: Object.keys(BETA_TOGGLES).filter((t) => ENEMY_TYPES[t] && s[BETA_TOGGLES[t]]), betaCount: s.betaCount || 1,
   };
 }
 // Relative weights of the monster types for each "Enemy types" choice
@@ -3952,6 +4337,7 @@ function buildRoster(cfg) {
   exact.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { counts[i]++; left--; } });
   const list = [];
   types.forEach((t, i) => { for (let k = 0; k < counts[i]; k++) list.push(t); });
+  for (const t of cfg.betas || []) for (let k = 0; k < cfg.betaCount; k++) list.push(t);
   if (cfg.minigun) list.push('minigunner'); // Minigunner: one per round
   if (cfg.boss) list.push('titan');
   return list;
@@ -4028,6 +4414,7 @@ function spawnEnemy(e) {
   }
   e.mode = null;
   e.gState = 'attack'; e.burst = 0; e.burstT = 0; e.gT = 0;
+  e.windT = 0; e.aimReady = false; e.blinkT = e.def.blink ? rnd(...e.def.blink) : 0; e.healT = 1;
   e.alive = true;
   e.alert = false;
   e.tgt = null;
@@ -4064,6 +4451,16 @@ function attackerPos(id) {
 }
 function damageEnemy(e, amount, dir, knock, attackerId) {
   if (!e.alive) return;
+  if (e.def.shield && dir) {
+    // Shield Knight: hits from the front mostly bounce off the shield
+    const fx = Math.sin(e.facing), fz = Math.cos(e.facing);
+    const hl = Math.hypot(dir.x, dir.z) || 1;
+    if ((dir.x * fx + dir.z * fz) / hl < -0.35) {
+      amount *= e.def.shield;
+      sparks(e.body.pos.clone().setY(e.body.pos.y + 1.1).addScaledVector(new V3(fx, 0, fz), 0.6), new V3(fx, 0.3, fz), 0x99ddff, 6);
+      soundAt('bounce', e.body.pos);
+    }
+  }
   e.hp -= amount;
   e.flash = 1;
   e.alert = true;
@@ -4081,26 +4478,30 @@ function enemyFragsCount() { return net.mode === 'solo' || match.settings.enemyF
 function killEnemy(e, dir, attackerId) {
   e.alive = false;
   e.model.root.visible = false;
-  e.respawn = e.def.boss || e.def.once ? 1e9 : enemyCfg.respawn * rnd(0.8, 1.2);
+  const bossKill = match.settings.bossKill || 'end';
+  e.respawn = e.def.boss ? (bossKill === 'respawn' ? 60 : 1e9) : e.def.once ? 1e9 : enemyCfg.respawn * rnd(0.8, 1.2);
   enemyDeathFx(e, dir);
   if (e.def.boss) stat((s) => { s.bossWins++; });
-  if (e.def.boss && net.mode === 'host') {
+  if (e.def.boss && net.mode === 'host' && bossKill === 'end') {
     const who = attackerId !== null && attackerId !== undefined && attackerId !== ENEMY_ID ? nameOf(attackerId) : 'the team';
     setTimeout(() => hostEndMatch(`🏆 The Titan was defeated! Final blow: ${who}`), 2500);
   }
   if (e.def.kamikaze) enemyExplode(e.body.pos.clone().setY(e.body.pos.y + 0.8), e.def.kamikaze.dmg * enemyCfg.dmg * 0.6, e.def.kamikaze.radius, e.type);
   if (attackerId === net.myId) creditEnemyKill(e);
   netSend({ t: 'ekill', i: e.idx, by: attackerId ?? ENEMY_ID, d: dir ? [r2(dir.x), r2(dir.z)] : null });
-  // Drops only in singleplayer, where item lists never need syncing
-  if (net.mode === 'solo' && Math.random() < e.def.drop) {
-    const t = Math.random() < 0.35 ? 'health' : pick(['shells', 'bullets', 'rockets', 'slugs']);
-    addItem(t, e.body.pos.x, e.body.pos.y, e.body.pos.z, { temp: true, life: 20, fall: true, vy: 3 });
+  // Drops: always in singleplayer, online only on custom servers with drops switched on
+  const drops = net.mode === 'solo' || (match.custom && match.settings.monsterDrops);
+  if (drops && isAuthority() && Math.random() < e.def.drop) {
+    const t = randomDropType();
+    if (t) authorityDrop(t, e.body.pos.x, e.body.pos.y, e.body.pos.z);
   }
 }
 function creditEnemyKill(e) {
   statEnemyKill(e);
+  gunGameKill();
   if (!enemyFragsCount()) return;
   state.frags += e.def.frags || 1;
+  fragBonus(e.def.frags || 1);
   statFrags(e.def.frags || 1, false);
   msg(e.def.boss ? `You killed the ${e.def.name}! +${e.def.frags} frags` : (e.def.frags || 1) > 1 ? `${e.def.name} fragged! +${e.def.frags} frags` : `${e.def.name} fragged!`, e.def.boss ? '#ffd27a' : '#ff9a6a');
   Sound.play('frag');
@@ -4109,7 +4510,11 @@ function enemyDeathFx(e, dir) {
   const c = e.body.pos.clone();
   c.y += e.def.height * 0.5;
   gibs(c, [e.def.look.shirt, e.def.look.skin, e.def.look.pants, 0x7a1010], dir, e.def.boss ? 120 : 26);
-  if (e.def.boss) { explosionFx(c, 9); msg(`The ${e.def.name} has fallen!`, '#ffd27a'); }
+  if (e.def.boss) {
+    explosionFx(c, 9);
+    const k = match.settings.bossKill || 'end';
+    msg(`The ${e.def.name} has fallen!${k === 'respawn' ? ' It returns in 60 seconds…' : ''}`, '#ffd27a');
+  }
   soundAt('enemyDie', e.body.pos);
 }
 // Explosion caused by an enemy: hurts the local player and other players
@@ -4145,6 +4550,71 @@ function enemyHitRemote(r, dmg, dir, knock, type) {
   netSend({ t: 'hit', to: r.id, from: ENEMY_ID, dmg: Math.round(dmg), k: v3a(k), w: type });
 }
 
+// ---------- BETA monster behaviour (custom servers only) ----------
+function nearestTarget(pos) {
+  let best = null;
+  for (const t of enemyTargets()) {
+    const d = Math.hypot(t.body.pos.x - pos.x, t.body.pos.z - pos.z);
+    if (!best || d < best.d) best = { t, d };
+  }
+  return best;
+}
+function betaUpdate(e, dt) {
+  const d = e.def, b = e.body;
+  if (d.windup && e.windT > 0) {
+    e.windT -= dt;
+    e.flash = 0.9; // glowing eye/body while aiming
+    if (e.windT <= 0) e.aimReady = true;
+  }
+  if (d.blink && e.alert) {
+    e.blinkT -= dt;
+    const near = nearestTarget(b.pos);
+    if (e.blinkT <= 0 && near && near.d < 60) {
+      e.blinkT = rnd(...d.blink);
+      const tp = near.t.body.pos, oldX = b.pos.x, oldY = b.pos.y, oldZ = b.pos.z;
+      for (let i = 0; i < 10; i++) {
+        const a = Math.random() * Math.PI * 2, r = rnd(5, 8);
+        const x = tp.x + Math.cos(a) * r, z = tp.z + Math.sin(a) * r;
+        if (Math.abs(x) > W - 1 || Math.abs(z) > W - 1) continue;
+        const y = supportHeight(x, z, tp.y + 0.5);
+        if (Math.abs(y - tp.y) > 1.5) continue;
+        b.pos.set(x, y, z);
+        if (!freeAt(b, y) || inLava(b.pos) || dangerAhead(x, z, y)) { b.pos.set(oldX, oldY, oldZ); continue; }
+        spawnFx(new V3(oldX, oldY, oldZ), 0xc080ff);
+        spawnFx(b.pos, 0xc080ff);
+        soundAt('teleport', b.pos);
+        b.vel.set(0, 0, 0);
+        e.lastPos.copy(b.pos);
+        e.fireT = 0.35; // shoot right after arriving
+        if (net.mode === 'host') netSend({ t: 'blink', a: v3a(new V3(oldX, oldY, oldZ)), b: v3a(b.pos) });
+        break;
+      }
+    }
+  }
+  if (d.heal) {
+    e.healT -= dt;
+    if (e.healT <= 0) {
+      e.healT = d.heal.every;
+      for (const o of enemies) {
+        if (o === e || !o.alive || o.def.boss || o.hp >= o.maxHp) continue;
+        const dd = o.body.pos.distanceTo(b.pos);
+        if (dd > d.heal.radius) continue;
+        o.hp = Math.min(o.maxHp, o.hp + o.maxHp * d.heal.amount);
+        healBeam(b.pos, o.body.pos);
+        if (net.mode === 'host') netSend({ t: 'heal', a: v3a(b.pos), b: v3a(o.body.pos) });
+      }
+    }
+  }
+}
+function healBeam(a, b) {
+  const n = 10;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    particle(a.x + (b.x - a.x) * t, a.y + 1.3 + (b.y - a.y) * t, a.z + (b.z - a.z) * t, 0, 0.6, 0, 0x44ff77, 0.1, 0.5, 0, 1);
+  }
+}
+// ---------- end BETA ----------
+
 // Minigunner: 20-bolt barrage, 2 s pause, another 20 bolts, then 10 s running away, then back to attack
 function minigunUpdate(e, dt) {
   const d = e.def, b = e.body, cfg = enemyCfg;
@@ -4162,7 +4632,7 @@ function minigunUpdate(e, dt) {
   if (e.burst > 0) {
     e.burstT -= dt;
     while (e.burstT <= 0 && e.burst > 0) {
-      e.burstT += d.burstRate;
+      e.burstT += d.burstRate / (cfg.fireRate || 1);
       e.burst--;
       const aim = e.tgt ? e.tgt.body.pos : e.lastSeen;
       _mgEye.set(b.pos.x, b.pos.y + d.height * 0.72, b.pos.z);
@@ -4196,7 +4666,7 @@ const _mgEye = new V3();
 // ============================================================
 // Titan boss: timed attacks and health events (host / solo only)
 // ============================================================
-function defaultBossMods() { return { cd: 5, fast: 0, insane: false, hc: false, mortar: false, mcd: 10 }; }
+function defaultBossMods() { return { cd: 5, fast: 0, insane: false, hc: false, mortar: false, mcd: 10, chaos: false }; }
 function bossPlayers() { return net.mode === 'solo' ? 1 : 1 + remotes.size; }
 const _bAim = new V3(), _bEye = new V3();
 function bossFire(e, target, rocket, spread, barrage = false) {
@@ -4257,7 +4727,7 @@ function bossUpdate(e, dt) {
     }
   }
   // One cycle: two bolts halfway through, rockets at the end, so they never fire together
-  const cd = mods.cd;
+  const cd = mods.cd / (e.bcfg.fireRate || 1);
   e.cycleT += dt;
   if (!e.boltsDone && e.cycleT >= cd / 2) {
     e.boltsDone = true;
@@ -4270,7 +4740,7 @@ function bossUpdate(e, dt) {
   }
   // Mortar event: a shell at every player, not at the same moment as the bolts or rockets
   if (mods.mortar) {
-    e.mortarT = (e.mortarT ?? mods.mcd) - dt;
+    e.mortarT = (e.mortarT ?? mods.mcd) - dt * (e.bcfg.fireRate || 1);
     const c = e.cycleT, clear = c > 0.2 && Math.abs(c - cd / 2) > 0.2 && c < cd - 0.2;
     if (e.mortarT <= 0 && clear) {
       e.mortarT = mods.mcd;
@@ -4300,10 +4770,12 @@ function bossCheckQuarter(e) {
 // Events that are already active (or maxed out) are left out, which raises the others.
 function rollBossEvent() {
   const mods = match.bossMods;
-  const w = { 1: 16.6, 2: 16.6, 3: 16.6, 4: 16.6, 6: 16.6, 0: 8.4, 5: 8.4 };
+  // 7 = chaos: rare, every event at once
+  const w = { 1: 16.6, 2: 16.6, 3: 16.6, 4: 16.6, 6: 16.6, 0: 8.4, 5: 8.4, 7: 5 };
   if (mods.cd <= 1 && (!mods.mortar || mods.mcd <= 6)) delete w[2];
   if (mods.mortar) delete w[6];
-  if (mods.insane) delete w[3];
+  if (mods.insane || mobsAlreadyInsane()) delete w[3];
+  if (mods.chaos) delete w[7];
   if (mods.hc) delete w[4];
   const keys = Object.keys(w);
   let r = Math.random() * keys.reduce((a, k) => a + w[k], 0);
@@ -4327,31 +4799,29 @@ function bossEvent(e, k) {
       if (e.mortarT > mods.mcd) e.mortarT = mods.mcd;
       text = `⚡ FASTER ATTACKS — rockets and bolts every ${mods.cd}s` + (mods.mortar ? `, mortar every ${mods.mcd}s` : '');
       break;
-    case 3: {
+    case 3:
       text = '👹 INSANE MONSTERS — the monsters are now on Insane';
-      if (mods.insane) break;
-      mods.insane = true;
-      const old = enemyCfg;
-      const ins = DIFFICULTIES.insane;
-      const mobs = enemies.filter((m) => !m.def.boss).length;
-      const s = match.settings;
-      enemyCfg = { ...makeEnemyCfg('insane', Math.max(mobs, ins.count), ins.respawn, old.types, s), boss: old.boss };
-      // Insane brings more monsters
-      const extra = Math.max(0, ins.count - mobs);
-      add = extra ? buildRoster({ ...enemyCfg, count: extra, boss: false, minigun: false }) : [];
-      if (ENEMY_TYPES.minigunner && !enemies.some((m) => m.type === 'minigunner')) add.push('minigunner');
-      if (add.length) {
-        for (const type of add) createEnemy(type, enemies.length);
-        if (match.payload && match.payload.roster) match.payload.roster.push(...add);
-      }
+      add = bossMakeInsane();
       break;
-    }
     case 4:
       text = '☠ HARDCORE — die now and you are out until the next round!';
       if (!mods.hc) {
         mods.hc = true;
         bossHardcoreStart();
       }
+      break;
+    case 7:
+      // Chaos: faster attacks twice, mortar every 2 s, hardcore, insane monsters and the rocket barrage, all at once
+      mods.chaos = true;
+      mods.fast += 2;
+      mods.cd = 1;
+      mods.mortar = true;
+      mods.mcd = 2;
+      e.mortarT = Math.min(e.mortarT ?? 2, 2);
+      if (!mods.hc) { mods.hc = true; bossHardcoreStart(); }
+      add = bossMakeInsane();
+      e.barrage += 20;
+      text = '🌀 CHAOS — everything at once: 20 rockets, attacks every 1s, mortar every 2s, insane monsters, hardcore!';
       break;
     case 6:
       text = `💣 MORTAR — the Titan now lobs mortar shells every ${mods.mcd}s`;
@@ -4368,6 +4838,28 @@ function bossEvent(e, k) {
   if (match.payload) match.payload.bossMods = { ...mods };
   if (net.mode === 'host') netSend({ t: 'bev', text, k, mods: { ...mods }, add });
   onBossEvent(text, k);
+}
+// Monsters already on Insane or Nightmare stay as they are (never made easier)
+function mobsAlreadyInsane() { return match.difficulty === 'insane' || match.difficulty === 'nightmare'; }
+// Switch the normal monsters to Insane; returns the monster types added so clients can create them too
+function bossMakeInsane() {
+  const mods = match.bossMods;
+  if (mods.insane) return null;
+  mods.insane = true;
+  if (mobsAlreadyInsane() || !enemyCfg) return null;
+  const old = enemyCfg;
+  const ins = DIFFICULTIES.insane;
+  const mobs = enemies.filter((m) => !m.def.boss).length;
+  enemyCfg = { ...makeEnemyCfg('insane', Math.max(mobs, ins.count), ins.respawn, old.types, match.settings), boss: old.boss };
+  // Insane brings more monsters
+  const extra = Math.max(0, ins.count - mobs);
+  const add = extra ? buildRoster({ ...enemyCfg, count: extra, boss: false, minigun: false, betas: [] }) : [];
+  if (ENEMY_TYPES.minigunner && !enemies.some((m) => m.type === 'minigunner')) add.push('minigunner');
+  if (add.length) {
+    for (const type of add) createEnemy(type, enemies.length);
+    if (match.payload && match.payload.roster) match.payload.roster.push(...add);
+  }
+  return add;
 }
 // Players who are already dead when hardcore starts may still respawn once
 function bossHardcoreStart() {
@@ -4395,6 +4887,7 @@ function updateEnemy(e, dt) {
   const ranged = d.ranged, melee = d.melee;
   if (d.boss) bossUpdate(e, dt);
   if (d.minigun) minigunUpdate(e, dt);
+  if (d.beta) betaUpdate(e, dt);
   e.think -= dt; e.fireT -= dt; e.meleeT -= dt; e.painT -= dt; e.strafeT -= dt; e.wanderT -= dt;
   e.attackAnim = Math.max(0, e.attackAnim - dt);
 
@@ -4404,7 +4897,7 @@ function updateEnemy(e, dt) {
     e.los = false;
     const targets = enemyTargets()
       .map((t) => ({ t, dist: Math.hypot(t.body.pos.x - b.pos.x, t.body.pos.z - b.pos.z) }))
-      .filter((o) => o.dist < cfg.sight || (e.alert && o.dist < cfg.sight * 1.5))
+      .filter((o) => o.dist < cfg.sight * (d.sightMul || 1) || (e.alert && o.dist < cfg.sight * 1.5 * (d.sightMul || 1)))
       .sort((a, c) => a.dist - c.dist);
     for (const { t } of targets.slice(0, 3)) {
       _eEye.set(b.pos.x, b.pos.y + d.height * 0.85, b.pos.z);
@@ -4447,6 +4940,23 @@ function updateEnemy(e, dt) {
     const wl = Math.hypot(wx, wz);
     if (wl < 1.5 || e.wanderT <= 0) pickWander(e);
     else { mx = wx / wl; mz = wz / wl; }
+  }
+  if (d.windup && e.windT > 0) { mx = 0; mz = 0; } // Sniper holds still while aiming
+  if (d.heal) { // Medic: runs from players, otherwise stays near hurt monsters
+    const near = nearestTarget(b.pos);
+    if (near && near.d < d.flee) {
+      const ax = b.pos.x - near.t.body.pos.x, az = b.pos.z - near.t.body.pos.z, l = Math.hypot(ax, az) || 1;
+      mx = ax / l; mz = az / l;
+    } else {
+      let ally = null, ad = 1e9;
+      for (const o of enemies) {
+        if (o === e || !o.alive || o.def.heal) continue;
+        const dd = Math.hypot(o.body.pos.x - b.pos.x, o.body.pos.z - b.pos.z);
+        if (dd < ad) { ad = dd; ally = o; }
+      }
+      if (ally && ad > 6) { mx = (ally.body.pos.x - b.pos.x) / ad; mz = (ally.body.pos.z - b.pos.z) / ad; }
+      else { mx = 0; mz = 0; }
+    }
   }
   if (d.minigun) { // Minigunner: stands still while firing, runs away while cooling down
     if (e.burst > 0 || e.gState === 'pause') { mx = 0; mz = 0; }
@@ -4512,7 +5022,18 @@ function updateEnemy(e, dt) {
 
   // Attacks
   if (tgt && e.los) {
-    if (ranged && !d.boss && !d.minigun && e.fireT <= 0 && dist < cfg.sight) {
+    let fireNow = ranged && !d.boss && !d.minigun && e.fireT <= 0 && dist < cfg.sight * (d.sightMul || 1);
+    if (fireNow && d.windup && !e.aimReady) {
+      // Sniper: aim first (glowing), shoot when the wind-up is over
+      if (e.windT <= 0) {
+        e.windT = d.windup;
+        e.fireT = d.windup;
+        soundAt('pad', b.pos);
+      }
+      fireNow = false;
+    }
+    if (fireNow) {
+      e.aimReady = false;
       const bossRockets = false;
       e.fireT = rnd(...d.fireCd) * cfg.fire * (bossRockets ? 1.6 : 1);
       e.attackAnim = 0.25;
@@ -4532,7 +5053,7 @@ function updateEnemy(e, dt) {
         dir = v.divideScalar(speed);
       } else {
         dir = _pChest.clone().sub(_eEye).normalize();
-        spreadDir(dir, cfg.spread, dir);
+        spreadDir(dir, cfg.spread * (d.windup ? 0.25 : 1), dir);
         speed = d.projSpeed * cfg.proj * (bossRockets ? 0.8 : 1);
       }
       const color = bossRockets ? 0xff6622 : d.projColor || 0xff7a2a;
@@ -4540,7 +5061,7 @@ function updateEnemy(e, dt) {
       const radius = bossRockets ? 4 : d.projRadius || 0;
       const rocketLike = d.lob || bossRockets;
       // The boss fires a spread of three bolts when shooting
-      const shots = d.boss && !bossRockets ? 3 : 1;
+      const shots = d.blink ? 3 : 1;
       for (let k = 0; k < shots; k++) {
         const sd = k === 0 ? dir : spreadDir(dir, 0.08, new V3());
         spawnProjectile({
@@ -4690,6 +5211,9 @@ function animateEnemies(dt) {
 function startMatch(p) {
   statMatchEnd();
   match.settings = p.solo ? { ...p.settings } : sanitizeSettings(p.settings);
+  match.custom = !!p.custom;
+  if (!match.custom) stripCustom(match.settings);
+  setupMode(p);
   match.hardcore = !!p.hardcore;
   match.over = false;
   match.survived = 0;
@@ -4699,6 +5223,8 @@ function startMatch(p) {
   match.difficulty = p.difficulty || 'medium';
   match.payload = p;
   match.bossMods = p.bossMods ? { ...p.bossMods } : defaultBossMods();
+  // Lobby hardcore setting: one life, same rules as the boss hardcore event
+  if (match.settings.hardcore && net.mode !== 'solo') match.bossMods.hc = true;
   match.freeIds = new Set();
   match.allDeadT = 0;
   applyPhysics(match.settings);
@@ -4713,6 +5239,7 @@ function startMatch(p) {
   clearParticles();
   respawnPlayer(true);
   deathScreen.style.display = 'none';
+  afterMapLoad(p);
   scoreboardEl.style.display = 'none';
   Sound.play('start');
   statMatchStart();
@@ -4771,7 +5298,8 @@ const net = {
   peer: null, localBus: null, hostLink: null, links: new Set(), nextId: 1, lastAttacker: null, tick: 0,
   publicN: 0, publicTry: 0,
 };
-const publicServer = (n) => PUBLIC_SERVERS.find((s) => s.n === n);
+const publicServer = (n) => PUBLIC_SERVERS.find((s) => s.n === n) || CUSTOM_SERVERS.find((s) => s.n === n);
+const isCustomServer = () => !!(net.publicN && publicServer(net.publicN) && publicServer(net.publicN).custom);
 const publicCode = (n) => 'PUB' + n;
 const remotes = new Map();
 const pendingHits = new Map();
@@ -4893,8 +5421,22 @@ function startHost(fixedCode = null) {
   if (net.publicN) {
     // Public rooms always use their preset
     const sv = publicServer(net.publicN);
-    lobby.settings = sanitizeSettings({ ...DEFAULT_SETTINGS, ...sv.settings, mapMode: 'host' });
-    lobby.hostMap = sv.map || pick(PUBLIC_ROTATION); // random map when the server opens (unless fixed)
+    if (sv.custom) {
+      // Custom server: fixed map, the host sets everything. A player taking over keeps the last settings.
+      const keep = lobby.keepCustom === net.publicN && lobby.settings;
+      lobby.settings = sanitizeSettings({ ...DEFAULT_SETTINGS, ...(keep ? lobby.settings : {}), mapMode: 'host' });
+      lobby.hostMap = sv.map;
+      lobby.unlocked = MAPS.map((m) => m.id);
+    } else {
+      lobby.settings = sanitizeSettings({ ...DEFAULT_SETTINGS, ...sv.settings, mapMode: 'host' });
+      lobby.hostMap = sv.map || pick(PUBLIC_ROTATION); // random map when the server opens (unless fixed)
+    }
+    lobby.keepCustom = 0;
+  } else {
+    // Normal hosted room: your own saved settings
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('arena3d-settings') || 'null'); } catch { /* ignore */ }
+    lobby.settings = sanitizeSettings({ ...DEFAULT_SETTINGS, ...(saved || {}) });
   }
   lobbyChanged();
   if (USE_LOCAL_NET) {
@@ -4923,7 +5465,9 @@ function startHost(fixedCode = null) {
 function hostReady(code) {
   net.code = code;
   lobbyChanged();
-  if (net.publicN) {
+  if (isCustomServer()) {
+    msg(`You opened ${publicServer(net.publicN).name} — you are the host: set it up and press Start`, '#9fd4ff');
+  } else if (net.publicN) {
     msg(`You opened ${publicServer(net.publicN).name} — others can join now`, '#9fd4ff');
     hostStartMatch();
     enterMatchUI('Match started! Click Resume to play');
@@ -4970,7 +5514,7 @@ function hostBroadcast(m, except = null) {
 function hostReceive(entry, m) {
   if (!m || typeof m !== 'object') return;
   if (m.t === 'info' && entry.id === null) {
-    entry.link.send({ t: 'info', players: remotes.size + 1, max: MAX_PLAYERS, map: match.active ? mapById(match.mapId).name : null });
+    entry.link.send({ t: 'info', players: remotes.size + 1, max: MAX_PLAYERS, map: match.active ? mapById(match.mapId).name : null, mode: isCustomServer() ? MODES[lobby.settings.gameMode || 'ffa'].name : null });
     return;
   }
   if (m.t === 'hello') {
@@ -4987,9 +5531,10 @@ function hostReceive(entry, m) {
     addRemote(id, name, color);
     lobby.players = lobbyPlayers();
     const inMatch = match.active && lobby.inMatch;
+    if (inMatch) hostTeamForNewPlayer(id);
     entry.link.send({
       t: 'welcome', id, color, players, lobby: lobbyPayload(),
-      match: inMatch ? { ...match.payload, timeLeft: match.timeLeft, items: items.map((it) => (it.active ? 1 : 0)) } : null,
+      match: inMatch ? { ...match.payload, teams: { ...match.teams }, timeLeft: match.timeLeft, late: true, items: items.map((it) => (it.active ? 1 : 0)) } : null,
     });
     hostBroadcast({ t: 'join', id, name, color }, entry);
     msg(`${name} joined`, '#9fd4ff');
@@ -4999,6 +5544,22 @@ function hostReceive(entry, m) {
   if (entry.id === null) return;
   switch (m.t) {
     case 'pick': hostHandlePick(entry, m.i); return;
+    case 'ggwin': if (modeIs('gungame')) hostEndMatch(`🔫 ${nameOf(entry.id)} won the Gun game`); return;
+    case 'dpick': {
+      // A client wants a dropped item: the first one to ask gets it
+      if (!match.active) return;
+      const it = removeDrop(m.u);
+      if (!it) return;
+      entry.link.send({ t: 'dgrant', u: m.u, k: it.type });
+      hostBroadcast({ t: 'dgone', u: m.u }, entry);
+      return;
+    }
+    case 'pdrop': {
+      const def = ITEMS[m.w];
+      if (!match.active || !match.settings.playerDrops || !def || def.kind !== 'weapon' || !weaponAllowed(m.w) || !Array.isArray(m.p)) return;
+      authorityDrop(m.w, Number(m.p[0]) || 0, (Number(m.p[1]) || 0) + 0.4, Number(m.p[2]) || 0);
+      return;
+    }
     case 'vote':
       if (lobby.unlocked.includes(m.map)) { lobby.votes[entry.id] = m.map; lobbyChanged(); }
       return;
@@ -5037,8 +5598,11 @@ function hostStartMatch() {
     const best = Object.keys(counts).filter((k) => counts[k] === top);
     if (best.length) map = pick(best);
   }
-  const cfg = s.enemies ? makeEnemyCfg(s.enemyDifficulty, s.enemyCount, s.enemyRespawn, s.enemyTypes, s) : null;
-  const payload = { map, settings: { ...s }, roster: cfg ? buildRoster(cfg) : [], enemyCfg: cfg, difficulty: s.enemyDifficulty };
+  const custom = !!(net.publicN && publicServer(net.publicN).custom);
+  const ms = custom ? { ...s } : stripCustom({ ...s });
+  const cfg = ms.enemies ? makeEnemyCfg(ms.enemyDifficulty, ms.enemyCount, ms.enemyRespawn, ms.enemyTypes, ms) : null;
+  const teams = custom && ms.gameMode === 'tdm' ? hostAssignTeams() : {};
+  const payload = { map, custom, teams, settings: ms, roster: cfg ? buildRoster(cfg) : [], enemyCfg: cfg, difficulty: ms.enemyDifficulty };
   lobby.inMatch = true;
   lobby.result = '';
   lobby.votes = {};
@@ -5073,7 +5637,7 @@ function onMatchEnd(result) {
   msg(result, '#ffd27a');
   showScreen('Lobby');
   lobbyChanged();
-  if (net.mode === 'host' && net.publicN) {
+  if (net.mode === 'host' && net.publicN && !isCustomServer()) {
     const n = net.publicN;
     setTimeout(() => {
       if (net.mode !== 'host' || net.publicN !== n || match.active) return;
@@ -5143,14 +5707,24 @@ function checkMatchEnd(dt) {
   const s = match.settings;
   if (s.timeLimit) match.timeLeft -= dt;
   if (net.mode !== 'host') return;
-  if (match.bossMods.hc && enemies.some((e) => e.def.boss && e.alive)) {
+  const bossAlive = enemies.some((e) => e.def.boss && e.alive);
+  if (match.bossMods.hc && (bossAlive || s.hardcore)) {
     for (const r of remotes.values()) if (r.alive) match.freeIds.delete(r.id);
-    const anyone = state.alive || state.freeRespawn || [...remotes.values()].some((r) => r.alive || !r.hasState || match.freeIds.has(r.id));
-    match.allDeadT = anyone ? 0 : match.allDeadT + dt;
-    if (match.allDeadT > 2.5) { hostEndMatch('☠ Everyone is dead — the Titan wins'); return; }
+    const aliveIds = [];
+    if (state.alive || state.freeRespawn) aliveIds.push(net.myId);
+    for (const r of remotes.values()) if (r.alive || !r.hasState || match.freeIds.has(r.id)) aliveIds.push(r.id);
+    const players = 1 + remotes.size;
+    // Everyone dead ends it; without monsters, the last player alive wins
+    const over = !aliveIds.length || (s.hardcore && !s.enemies && !bossAlive && players >= 2 && aliveIds.length === 1);
+    match.allDeadT = over ? match.allDeadT + dt : 0;
+    if (match.allDeadT > 2.5) {
+      hostEndMatch(aliveIds.length ? `☠ Hardcore — ${nameOf(aliveIds[0])} is the last one alive` : bossAlive ? '☠ Everyone is dead — the Titan wins' : '☠ Hardcore — everyone is dead');
+      return;
+    }
   }
-  if (s.timeLimit && match.timeLeft <= 0) { hostEndMatch(enemies.some((e) => e.def.boss && e.alive) ? 'Time is up — the Titan survived' : ''); return; }
-  if (s.fragLimit) {
+  if (hostModeStep(dt)) return;
+  if (s.timeLimit && match.timeLeft <= 0) { hostEndMatch(enemies.some((e) => e.def.boss && e.alive) && s.bossKill === 'end' ? 'Time is up — the Titan survived' : modeTimeUpResult()); return; }
+  if (s.fragLimit && (match.mode === 'ffa' || match.mode === 'instagib' || !match.mode)) {
     let top = state.frags;
     for (const r of remotes.values()) top = Math.max(top, r.frags);
     if (top >= s.fragLimit) hostEndMatch();
@@ -5173,6 +5747,7 @@ function startJoin(code, onNotFound = null) {
       if (net.publicN) {
         // Keep the public server alive: rejoin, or take over as the new host
         const n = net.publicN;
+        if (isCustomServer()) lobby.keepCustom = n;
         msg('The host left — keeping the server running…', '#ffd27a');
         leaveNetwork(true);
         showScreen('Lobby');
@@ -5285,6 +5860,36 @@ function clientReceive(m) {
       soundAt('explosion', pos);
       break;
     }
+    case 'drop':
+      if (match.active && ITEMS[m.k] && Array.isArray(m.p)) addItem(m.k, m.p[0], m.p[1], m.p[2], { temp: true, life: 20, fall: true, vy: 3, uid: m.u });
+      break;
+    case 'dgone': removeDrop(m.u); break;
+    case 'team':
+      match.teams[m.id] = m.tm;
+      applyTeamColors();
+      break;
+    case 'koth':
+      if (!match.koth) break;
+      match.koth.holder = m.h;
+      for (const id of Object.keys(m.s || {})) match.koth.pts[id] = m.s[id];
+      break;
+    case 'dgrant': {
+      const it = removeDrop(m.u);
+      const type = it ? it.type : m.k;
+      if (ITEMS[type]) {
+        const fake = it || { type, def: ITEMS[type] };
+        if (canPickup(fake)) applyPickup(fake);
+      }
+      break;
+    }
+    case 'blink': {
+      const a = new V3(...m.a), b = new V3(...m.b);
+      spawnFx(a, 0xc080ff);
+      spawnFx(b, 0xc080ff);
+      soundAt('teleport', b);
+      break;
+    }
+    case 'heal': healBeam(new V3(...m.a), new V3(...m.b)); break;
     case 'bev': {
       if (!match.active) break;
       const wasHc = match.bossMods.hc;
@@ -5324,7 +5929,7 @@ function netTick() {
     const p = player.pos, v = player.vel;
     netSend({
       t: 's', id: net.myId, p: v3a(p), v: v3a(v), y: r3(player.yaw), pi: r3(player.pitch),
-      w: ORDER.indexOf(state.weapon), a: state.alive ? 1 : 0, g: player.onGround ? 1 : 0, f: state.frags, d: state.deaths,
+      w: ORDER.indexOf(state.weapon), a: state.alive ? 1 : 0, g: player.onGround ? 1 : 0, f: state.frags, d: state.deaths, o: state.out ? 1 : 0, lv: state.ggLevel || 0,
     });
     if (net.mode === 'host') {
       if (enemies.length && net.tick % 2 === 0) hostBroadcast({ t: 'es', l: enemySnapshot() });
@@ -5355,6 +5960,8 @@ function applyRemoteState(m) {
   r.onGround = !!m.g;
   r.frags = m.f;
   r.deaths = m.d;
+  r.out = !!m.o;
+  r.lvl = m.lv | 0;
   r.lastSeen = performance.now();
   if (!r.hasState) {
     r.hasState = true;
@@ -5364,7 +5971,7 @@ function applyRemoteState(m) {
   }
 }
 function receiveHit(m) {
-  if (!state.alive) return;
+  if (!state.alive || isTeammate(m.from)) return;
   let dir = null, knock = 0;
   if (m.k) {
     dir = new V3(m.k[0], m.k[1], m.k[2]);
@@ -5376,7 +5983,7 @@ function receiveHit(m) {
 }
 // Damage to other players is collected during a step and sent as one message per target
 function hitRemote(r, dmg, dir, knock, weapon) {
-  if (!r.alive || dmg <= 0) return;
+  if (!r.alive || dmg <= 0 || isTeammate(r.id)) return;
   state.hitMarkT = 0.12;
   stat((s) => { s.dmgDealt += dmg; });
   let h = pendingHits.get(r.id);
@@ -5401,7 +6008,7 @@ function onKill(m) {
     const wName = WEAPONS[m.w] ? WEAPONS[m.w].name : m.w === 'telefrag' ? 'telefrag' : null;
     const mine = m.killer === net.myId;
     msg(`${nameOf(m.killer)} fragged ${nameOf(m.victim)}${wName ? ' (' + wName + ')' : ''}`, mine ? '#ffd27a' : '#ff9a6a');
-    if (mine) { state.frags++; statFrags(1, true); Sound.play('frag'); }
+    if (mine) { state.frags++; fragBonus(1); statFrags(1, true); Sound.play('frag'); gunGameKill(); }
   }
   const r = remotes.get(m.victim);
   if (r && r.hasState) {
@@ -5483,6 +6090,7 @@ function addRemote(id, name, colorIdx, frags = 0, deaths = 0) {
     alive: true, onGround: true, hasState: false, frags, deaths, lastSeen: performance.now(), walkPhase: 0, muzzleT: 0,
   };
   remotes.set(id, r);
+  if (match.active) applyTeamColors();
   return r;
 }
 function removeRemote(id) {
@@ -5548,6 +6156,294 @@ function separateLocal() {
 }
 
 // ============================================================
+// Game modes (custom servers only)
+// ============================================================
+// ffa: free for all · tdm: two teams, no friendly fire · lms: limited lives, last one alive wins
+// gungame: every kill moves you to the next weapon · koth: hold the hill to score · instagib: one-shot railguns
+const MODES = {
+  ffa: { name: 'Free for all', rule: 'Most frags wins.' },
+  tdm: { name: 'Team deathmatch', rule: 'Red against Blue. Team frags count, no friendly fire.' },
+  lms: { name: 'Last man standing', rule: 'Limited lives. The last player alive wins.' },
+  gungame: { name: 'Gun game', rule: 'Every kill moves you to the next weapon. First through all of them wins.' },
+  koth: { name: 'King of the hill', rule: 'Stand alone on the glowing hill to score. Most time on the hill wins.' },
+  instagib: { name: 'Instagib', rule: 'Railguns only, infinite ammo, every hit kills.' },
+};
+const TEAM_NAMES = ['Red', 'Blue'];
+const TEAM_COLORS = [0xd8443b, 0x3b7dd8];
+const GUN_CHAIN = ['shotgun', 'machinegun', 'rocket', 'grenade', 'railgun', 'blaster'];
+const modeIs = (m) => match.active && match.mode === m;
+
+// ---------- Setup at match start ----------
+function setupMode(p) {
+  const s = match.settings;
+  match.mode = match.custom ? s.gameMode || 'ffa' : 'ffa';
+  match.teams = { ...(p.teams || {}) };
+  match.koth = { pts: {}, holder: -1, t: 0, send: 0 };
+  match.lmsEndT = 0;
+  state.ggLevel = 0;
+  state.ggKills = 0;
+  state.out = false;
+  // Mode rules that change the normal settings
+  if (match.mode === 'gungame' || match.mode === 'instagib') {
+    s.infiniteAmmo = true;
+    s.weaponPickups = false;
+    s.ammoPickups = false;
+    s.playerDrops = false;
+    s.startWeapons = 'blaster';
+  }
+  if (match.mode === 'instagib') s.dmgMul = 1;
+}
+function afterMapLoad(p) {
+  if (match.mode === 'koth') buildHill();
+  applyTeamColors();
+  // Late joiners watch a running last-man-standing round
+  if (match.mode === 'lms' && p.late) {
+    state.out = true;
+    state.alive = false;
+    showOutScreen('Spectating', 'A last man standing round is running — you play in the next one.');
+  }
+  if (match.mode !== 'ffa') msg(`${MODES[match.mode].name}: ${MODES[match.mode].rule}`, '#9fd4ff');
+}
+// Weapons you spawn with in the modes that decide them
+function modeLoadout(weapons) {
+  if (match.mode === 'gungame') {
+    for (const k of Object.keys(weapons)) delete weapons[k];
+    weapons[GUN_CHAIN[Math.min(state.ggLevel, GUN_CHAIN.length - 1)]] = true;
+    return GUN_CHAIN[Math.min(state.ggLevel, GUN_CHAIN.length - 1)];
+  }
+  if (match.mode === 'instagib') {
+    for (const k of Object.keys(weapons)) delete weapons[k];
+    weapons.railgun = true;
+    return 'railgun';
+  }
+  return null;
+}
+
+// ---------- Teams ----------
+function teamOf(id) {
+  if (match.teams[id] !== undefined) return match.teams[id];
+  return id % 2;
+}
+function isTeammate(id) {
+  return modeIs('tdm') && id !== net.myId && id !== ENEMY_ID && id !== null && id !== undefined && teamOf(id) === teamOf(net.myId);
+}
+// Host: split everyone into two teams, and put late joiners on the smaller team
+function hostAssignTeams() {
+  const ids = [net.myId, ...remotes.keys()].sort(() => Math.random() - 0.5);
+  const teams = {};
+  ids.forEach((id, i) => { teams[id] = i % 2; });
+  return teams;
+}
+function hostTeamForNewPlayer(id) {
+  if (!modeIs('tdm')) return;
+  const n = [0, 0];
+  for (const [pid, t] of Object.entries(match.teams)) if (+pid === net.myId || remotes.has(+pid)) n[t]++;
+  const t = n[0] <= n[1] ? 0 : 1;
+  match.teams[id] = t;
+  if (match.payload) match.payload.teams = { ...match.teams };
+  hostBroadcast({ t: 'team', id, tm: t });
+}
+function colorFor(idx, id) {
+  if (modeIs('tdm')) return TEAM_COLORS[teamOf(id)];
+  return PLAYER_COLORS[idx % PLAYER_COLORS.length];
+}
+function applyTeamColors() {
+  const mine = colorFor(net.myColor, net.myId);
+  character.mats[1].color.set(mine);
+  character.mats[3].color.set(mine).multiplyScalar(0.7);
+  for (const r of remotes.values()) {
+    const c = colorFor(r.colorIdx, r.id);
+    r.model.mats[1].color.set(c);
+    r.model.mats[3].color.set(c).multiplyScalar(0.7);
+  }
+}
+function teamScores() {
+  const t = [0, 0];
+  t[teamOf(net.myId)] += state.frags;
+  for (const r of remotes.values()) t[teamOf(r.id)] += r.frags;
+  return t;
+}
+
+// ---------- Last man standing ----------
+const lmsOut = (deaths, out) => out || deaths >= match.settings.lmsLives;
+function showOutScreen(title, hint) {
+  $('deathTitle').textContent = title;
+  $('deathInfo').textContent = `Frags: ${state.frags} · Deaths: ${state.deaths}`;
+  $('deathHint').textContent = hint;
+  $('deathBest').textContent = '';
+  $('deathButtons').style.display = 'none';
+  deathScreen.style.display = 'flex';
+}
+function lmsLivesLeft() { return Math.max(0, match.settings.lmsLives - state.deaths); }
+
+// ---------- Gun game ----------
+function gunGameKill() {
+  if (!modeIs('gungame') || !state.alive) return;
+  state.ggKills++;
+  if (state.ggKills < match.settings.ggKills) return;
+  state.ggKills = 0;
+  state.ggLevel++;
+  if (state.ggLevel >= GUN_CHAIN.length) {
+    // Through the whole chain: this player wins
+    msg('You finished the Gun game!', '#ffd27a');
+    if (net.mode === 'host') hostEndMatch(`🔫 ${net.name} won the Gun game`);
+    else netSend({ t: 'ggwin' });
+    return;
+  }
+  const w = GUN_CHAIN[state.ggLevel];
+  state.weapons = { [w]: true };
+  state.weapon = w;
+  state.switchT = SWITCH_TIME;
+  msg(`Level ${state.ggLevel + 1}/${GUN_CHAIN.length}: ${WEAPONS[w].name}${w === 'blaster' ? ' — last one!' : ''}`, '#9fd4ff');
+  Sound.play('pickupWeapon');
+}
+
+// ---------- King of the hill ----------
+let hillMesh = null, hillRing = null;
+function hillSpot() {
+  const def = currentMap;
+  if (def.hill) return def.hill;
+  const mega = mapData.items.find((i) => i[0] === 'mega');
+  return mega ? [mega[1], mega[2], mega[3], 3.5] : [0, 0, 0, 4];
+}
+function buildHill() {
+  const [x, y, z, r] = hillSpot();
+  match.hill = { x, y, z, r };
+  const geo = new THREE.CylinderGeometry(r, r, 4, 32, 1, true);
+  geo.userData.own = true;
+  hillMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }));
+  hillMesh.position.set(x, y + 2, z);
+  world.add(hillMesh);
+  hillRing = glowDisc(x, y + 0.08, z, r * 2, 0xffd24a, 0.8);
+  hillRing.material = hillRing.material.clone(); // own material, its colour changes
+}
+function onHill(pos) {
+  const h = match.hill;
+  return h && Math.hypot(pos.x - h.x, pos.z - h.z) < h.r && pos.y > h.y - 1 && pos.y < h.y + 3;
+}
+// Host: count seconds for the one player alone on the hill
+function hostKothStep(dt) {
+  const k = match.koth;
+  const on = [];
+  if (state.alive && onHill(player.pos)) on.push(net.myId);
+  for (const r of remotes.values()) if (r.alive && r.hasState && onHill(r.body.pos)) on.push(r.id);
+  k.holder = on.length === 1 ? on[0] : on.length > 1 ? -2 : -1;
+  if (on.length === 1) k.pts[on[0]] = (k.pts[on[0]] || 0) + dt;
+  k.send -= dt;
+  if (k.send <= 0) {
+    k.send = 0.4;
+    const pts = {};
+    for (const id of Object.keys(k.pts)) pts[id] = r2(k.pts[id]);
+    netSend({ t: 'koth', s: pts, h: k.holder });
+  }
+  if (on.length === 1 && k.pts[on[0]] >= match.settings.kothTarget) hostEndMatch(`👑 ${nameOf(on[0])} is King of the hill`);
+}
+function animateHill() {
+  if (!hillMesh || !modeIs('koth')) return;
+  const h = match.koth.holder;
+  const c = h === -1 ? 0xffd24a : h === -2 ? 0xffffff : h === net.myId ? 0x44ff77 : isTeammate(h) ? 0x44ff77 : 0xff4a3a;
+  hillMesh.material.color.set(c);
+  if (hillRing) hillRing.material.color.set(c);
+  hillMesh.material.opacity = 0.14 + Math.sin(performance.now() / 250) * 0.05;
+}
+
+// ---------- Host: win conditions ----------
+function hostModeStep(dt) {
+  const s = match.settings;
+  if (match.mode === 'tdm' && s.fragLimit) {
+    const t = teamScores();
+    if (Math.max(...t) >= s.fragLimit) { hostEndMatch(tdmResult()); return true; }
+  }
+  if (match.mode === 'lms') {
+    const people = [{ id: net.myId, out: lmsOut(state.deaths, state.out) }];
+    for (const r of remotes.values()) if (r.hasState) people.push({ id: r.id, out: lmsOut(r.deaths, r.out) });
+    const left = people.filter((p) => !p.out);
+    if (people.length >= 2 && left.length <= 1) {
+      match.lmsEndT += dt;
+      if (match.lmsEndT > 1.5) {
+        hostEndMatch(left.length ? `🏆 ${nameOf(left[0].id)} is the last one standing` : 'Nobody survived');
+        return true;
+      }
+    } else match.lmsEndT = 0;
+  }
+  if (match.mode === 'koth') hostKothStep(dt);
+  return false;
+}
+function tdmResult() {
+  const t = teamScores();
+  if (t[0] === t[1]) return `Draw — Red ${t[0]} : ${t[1]} Blue`;
+  const w = t[0] > t[1] ? 0 : 1;
+  return `🏆 ${TEAM_NAMES[w]} team wins — Red ${t[0]} : ${t[1]} Blue`;
+}
+// Result text when the time runs out
+function modeTimeUpResult() {
+  if (match.mode === 'tdm') return tdmResult();
+  if (match.mode === 'koth') {
+    const pts = match.koth.pts;
+    const best = Object.keys(pts).sort((a, b) => pts[b] - pts[a])[0];
+    return best !== undefined ? `👑 Time is up — ${nameOf(+best)} held the hill longest (${Math.round(pts[best])} s)` : 'Time is up — nobody held the hill';
+  }
+  if (match.mode === 'gungame') {
+    const rows = [{ id: net.myId, lv: state.ggLevel, f: state.frags }];
+    for (const r of remotes.values()) rows.push({ id: r.id, lv: r.lvl || 0, f: r.frags });
+    rows.sort((a, b) => b.lv - a.lv || b.f - a.f);
+    return `🔫 Time is up — ${nameOf(rows[0].id)} got furthest (level ${rows[0].lv + 1})`;
+  }
+  if (match.mode === 'lms') {
+    const rows = [{ id: net.myId, l: lmsOut(state.deaths, state.out) ? 0 : match.settings.lmsLives - state.deaths, f: state.frags }];
+    for (const r of remotes.values()) rows.push({ id: r.id, l: lmsOut(r.deaths, r.out) ? 0 : match.settings.lmsLives - r.deaths, f: r.frags });
+    rows.sort((a, b) => b.l - a.l || b.f - a.f);
+    return `⏱ Time is up — ${nameOf(rows[0].id)} has the most lives left`;
+  }
+  return '';
+}
+
+// ---------- HUD line and scoreboard column ----------
+function modeHudText() {
+  if (!match.active) return '';
+  const hc = match.settings.hardcore && net.mode !== 'solo' ? '<span style="color:#ff6a5a">☠ Hardcore — one life</span>' : '';
+  const t = modeHudInner();
+  return hc && t ? `${hc}<br>${t}` : hc || t;
+}
+function modeHudInner() {
+  if (!match.mode || match.mode === 'ffa') return '';
+  const s = match.settings;
+  switch (match.mode) {
+    case 'tdm': {
+      const t = teamScores();
+      return `<span style="color:#ff7a6a">RED ${t[0]}</span> : <span style="color:#7ab0ff">${t[1]} BLUE</span>${s.fragLimit ? ` <small>(to ${s.fragLimit})</small>` : ''}<br><small>You are on ${TEAM_NAMES[teamOf(net.myId)]}</small>`;
+    }
+    case 'lms': {
+      let left = lmsOut(state.deaths, state.out) ? 0 : 1;
+      for (const r of remotes.values()) if (r.hasState && !lmsOut(r.deaths, r.out)) left++;
+      return `Lives: ${lmsOut(state.deaths, state.out) ? 'OUT' : lmsLivesLeft()} <small>· ${left} player${left === 1 ? '' : 's'} left</small>`;
+    }
+    case 'gungame': {
+      const w = GUN_CHAIN[Math.min(state.ggLevel, GUN_CHAIN.length - 1)];
+      return `Gun game ${state.ggLevel + 1}/${GUN_CHAIN.length}: ${WEAPONS[w].short || WEAPONS[w].name}<br><small>kills ${state.ggKills}/${s.ggKills}</small>`;
+    }
+    case 'koth': {
+      const k = match.koth, mine = Math.floor(k.pts[net.myId] || 0);
+      let lead = -1, lv = 0;
+      for (const id of Object.keys(k.pts)) if (k.pts[id] > lv) { lv = k.pts[id]; lead = +id; }
+      const st = k.holder === net.myId ? '<span style="color:#7dff9a">You hold the hill!</span>' : k.holder === -2 ? 'Hill contested' : k.holder >= 0 ? `${escapeHtml(nameOf(k.holder))} holds the hill` : 'Hill is free';
+      return `Hill: you ${mine}/${s.kothTarget} s${lead >= 0 && lead !== net.myId ? ` · ${escapeHtml(nameOf(lead))} ${Math.floor(lv)}` : ''}<br><small>${st}</small>`;
+    }
+    case 'instagib': return 'Instagib';
+  }
+  return '';
+}
+function modeColumn() {
+  switch (match.mode) {
+    case 'lms': return ['Lives', (id, d, out) => (lmsOut(d, out) ? 'out' : match.settings.lmsLives - d)];
+    case 'gungame': return ['Level', (id) => (id === net.myId ? state.ggLevel : (remotes.get(id) || {}).lvl || 0) + 1];
+    case 'koth': return ['Hill', (id) => Math.floor(match.koth.pts[id] || 0) + ' s'];
+    case 'tdm': return ['Team', (id) => TEAM_NAMES[teamOf(id)]];
+  }
+  return null;
+}
+
+// ============================================================
 // Items / pickups
 // ============================================================
 // In multiplayer the host decides who gets an item; items are indexed by
@@ -5610,7 +6506,7 @@ function addItem(type, x, y, z, opts = {}) {
   disc.scale.setScalar(1.6);
   group.add(disc);
   scene.add(group);
-  items.push({ type, def, group, spin, active: true, timer: 0, reqT: 0, temp: !!opts.temp, life: opts.life || 0, phase: Math.random() * 6, falling: !!opts.fall, vy: opts.vy || 0 });
+  items.push({ type, def, group, spin, active: true, timer: 0, reqT: 0, temp: !!opts.temp, life: opts.life || 0, phase: Math.random() * 6, falling: !!opts.fall, vy: opts.vy || 0, uid: opts.uid || 0 });
 }
 function clearItems() {
   for (const it of items) scene.remove(it.group);
@@ -5625,7 +6521,7 @@ function canPickup(it) {
       return !state.weapons[def.weapon] || (!s.infiniteAmmo && state.ammo[w.ammo] < AMMO_MAX[w.ammo]);
     }
     case 'ammo': return !s.infiniteAmmo && state.ammo[def.ammo] < AMMO_MAX[def.ammo];
-    case 'health': return state.health < def.max * s.maxHealth;
+    case 'health': return state.health < def.max * s.maxHealth + (state.bonus || 0);
     case 'armor': return state.armor < s.maxArmor;
   }
   return false;
@@ -5652,7 +6548,8 @@ function applyPickup(it) {
       break;
     case 'health': {
       const add = Math.round(def.amount * s.maxHealth);
-      state.health = Math.min(def.max * s.maxHealth, state.health + add);
+      // Never lowers health (frag bonus health stays on top)
+      state.health = Math.max(state.health, Math.min(def.max * s.maxHealth + (state.bonus || 0), state.health + add));
       msg(it.type === 'mega' ? 'MEGA HEALTH!' : `+${add} health`, '#7dff9a');
       Sound.play(it.type === 'mega' ? 'pickupMega' : 'pickupHealth');
       screenFlash('#40ff80', 0.12);
@@ -5703,6 +6600,45 @@ function dropFall(it, dt) {
   }
   return true;
 }
+// ---------- Dropped items (monster drops, player weapon drops) ----------
+// The host (or the solo player) creates them and tells everyone, each with its own id.
+let dropSeq = 1;
+function authorityDrop(type, x, y, z) {
+  if (!isAuthority() || !ITEMS[type]) return;
+  const uid = dropSeq++;
+  addItem(type, x, y, z, { temp: true, life: 20, fall: true, vy: 3, uid });
+  if (net.mode === 'host') netSend({ t: 'drop', u: uid, k: type, p: [r2(x), r2(y), r2(z)] });
+}
+function dropIndex(uid) { return items.findIndex((it) => it.temp && it.uid === uid); }
+function removeDrop(uid) {
+  const i = dropIndex(uid);
+  if (i < 0) return null;
+  const it = items[i];
+  scene.remove(it.group);
+  items.splice(i, 1);
+  return it;
+}
+// Which weapon uses this ammo type
+const AMMO_WEAPON = {};
+for (const id of Object.keys(WEAPONS)) if (WEAPONS[id].ammo) AMMO_WEAPON[WEAPONS[id].ammo] = id;
+// Is this pickup switched on by the match settings?
+function itemAllowed(type, s = match.settings) {
+  const def = ITEMS[type];
+  switch (def.kind) {
+    case 'weapon': return s.weaponPickups && weaponAllowed(def.weapon, s);
+    case 'ammo': return s.ammoPickups !== false && weaponAllowed(AMMO_WEAPON[def.ammo], s);
+    case 'health': return s.healthPickups && (type !== 'mega' || s.megaPickups !== false);
+    case 'armor': return s.healthPickups && s.armorPickups !== false;
+  }
+  return true;
+}
+// Random monster drop: health or ammo for a weapon that is switched on
+function randomDropType() {
+  const ammo = ['shells', 'bullets', 'rockets', 'slugs', 'grenades'].filter((t) => itemAllowed(t));
+  const heal = itemAllowed('health');
+  if (heal && (!ammo.length || Math.random() < 0.35)) return 'health';
+  return ammo.length ? pick(ammo) : null;
+}
 function updateItems(dt) {
   const authority = isAuthority();
   const now = performance.now();
@@ -5729,12 +6665,16 @@ function updateItems(dt) {
     if (dx * dx + dz * dz >= 1.2 || dy <= -0.8 || dy >= 1.6 || !canPickup(it)) continue;
     if (authority) {
       applyPickup(it);
-      if (it.temp) { scene.remove(it.group); items.splice(i, 1); }
-      else takeItem(i);
+      if (it.temp) {
+        scene.remove(it.group);
+        items.splice(i, 1);
+        if (net.mode === 'host' && it.uid) netSend({ t: 'dgone', u: it.uid });
+      } else takeItem(i);
     } else if (now > it.reqT) {
       // Clients ask the host, which decides who gets it
       it.reqT = now + 500;
-      netSend({ t: 'pick', i });
+      if (it.temp) { if (it.uid) netSend({ t: 'dpick', u: it.uid }); }
+      else netSend({ t: 'pick', i });
     }
   }
 }
